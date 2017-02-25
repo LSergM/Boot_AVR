@@ -1,0 +1,1905 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   8               		.text
+   9               	.Ltext0:
+ 116               	sendchar:
+   1:main.c        **** /*****************************************************************************
+   2:main.c        **** *
+   3:main.c        **** * AVRPROG compatible boot-loader
+   4:main.c        **** * Version  : 0.85 (Dec. 2008)
+   5:main.c        **** * Compiler : avr-gcc 4.1.2 / avr-libc 1.4.6
+   6:main.c        **** * size     : depends on features and startup ( minmal features < 512 words)
+   7:main.c        **** * by       : Martin Thomas, Kaiserslautern, Germany
+   8:main.c        **** *            eversmith@heizung-thomas.de
+   9:main.c        **** *            Additional code and improvements contributed by:
+  10:main.c        **** *           - Uwe Bonnes
+  11:main.c        **** *           - Bjoern Riemer
+  12:main.c        **** *           - Olaf Rempel
+  13:main.c        **** *
+  14:main.c        **** * License  : Copyright (c) 2006-2008 M. Thomas, U. Bonnes, O. Rempel
+  15:main.c        **** *            Free to use. You have to mention the copyright
+  16:main.c        **** *            owners in source-code and documentation of derived
+  17:main.c        **** *            work. No warranty! (Yes, you can insert the BSD
+  18:main.c        **** *            license here)
+  19:main.c        **** *
+  20:main.c        **** * Tested with ATmega8, ATmega16, ATmega162, ATmega32, ATmega324P,
+  21:main.c        **** *             ATmega644, ATmega644P, ATmega128, AT90CAN128
+  22:main.c        **** *
+  23:main.c        **** * - Initial versions have been based on the Butterfly bootloader-code
+  24:main.c        **** *   by Atmel Corporation (Authors: BBrandal, PKastnes, ARodland, LHM)
+  25:main.c        **** *
+  26:main.c        **** ****************************************************************************
+  27:main.c        **** *
+  28:main.c        **** *  See the makefile and readme.txt for information on how to adapt 
+  29:main.c        **** *  the linker-settings to the selected Boot Size (BOOTSIZE=xxxx) and 
+  30:main.c        **** *  the MCU-type. Other configurations futher down in this file.
+  31:main.c        **** *
+  32:main.c        **** *  With BOOT_SIMPLE, minimal features and discarded int-vectors
+  33:main.c        **** *  this bootloader has should fit into a a 512 word (1024, 0x400 bytes) 
+  34:main.c        **** *  bootloader-section. 
+  35:main.c        **** *
+  36:main.c        **** ****************************************************************************/
+  37:main.c        **** 
+  38:main.c        **** /* Частота контроллера (кварца) */
+  39:main.c        **** #ifndef F_CPU
+  40:main.c        **** // #define F_CPU 7372800
+  41:main.c        **** //#define F_CPU (7372800/2)
+  42:main.c        **** #define F_CPU 8000000
+  43:main.c        **** #endif
+  44:main.c        **** 
+  45:main.c        **** /* UART Скорость UART оптимально 19200 */
+  46:main.c        **** //#define BAUDRATE 9600
+  47:main.c        **** #define BAUDRATE 19200
+  48:main.c        **** //#define BAUDRATE 115200
+  49:main.c        **** 
+  50:main.c        **** /* Режим двойной скорости UART (бит U2C)*/
+  51:main.c        **** //#define UART_DOUBLESPEED
+  52:main.c        **** 
+  53:main.c        **** /* Используется второй UART на mega128 / can128 / mega162 / mega324p / mega644p */
+  54:main.c        **** //#define UART_USE_SECOND
+  55:main.c        **** 
+  56:main.c        **** /* Тип устройства:
+  57:main.c        ****    Для AVRProg выбирать BOOT 
+  58:main.c        ****    Это корректное значение для bootloader.
+  59:main.c        ****    avrdude может определить только part-code для ISP */
+  60:main.c        **** #define DEVTYPE     DEVTYPE_BOOT
+  61:main.c        **** // #define DEVTYPE     DEVTYPE_ISP
+  62:main.c        **** 
+  63:main.c        **** /*
+  64:main.c        ****  * Выбор порта для кнопки входа в загрузчик
+  65:main.c        ****  * Чтобы войти в загрузчик надо чтобы при запуске эта кнопка замыкала пин на землю
+  66:main.c        ****  */
+  67:main.c        **** #define BLPORT		PORTD
+  68:main.c        **** #define BLDDR		DDRD
+  69:main.c        **** #define BLPIN		PIND
+  70:main.c        **** #define BLPNUM		PIND5
+  71:main.c        **** 
+  72:main.c        **** #define BL_2_PORT		PORTB
+  73:main.c        **** #define BL_2_DDR		DDRB
+  74:main.c        **** #define BL_2_PIN		PINB
+  75:main.c        **** #define BL_2_PNUM		PINB7
+  76:main.c        **** 
+  77:main.c        **** 
+  78:main.c        **** /*
+  79:main.c        ****  * Выбор порта для индикатора работы загрузчика
+  80:main.c        ****  * Светодиод горит - мы в загрузчике
+  81:main.c        ****  */
+  82:main.c        **** 
+  83:main.c        **** #define ENABLE_BOOT_LED
+  84:main.c        **** #define BIPORT		PORTD
+  85:main.c        **** #define BIDDR		DDRD
+  86:main.c        **** #define BIPIN		PIND
+  87:main.c        **** #define BIPNUM		PIND5
+  88:main.c        **** 
+  89:main.c        **** 
+  90:main.c        **** /*
+  91:main.c        ****  * Выключить Собачий таймер на время загрузчика
+  92:main.c        ****  */
+  93:main.c        **** #define DISABLE_WDT_AT_STARTUP
+  94:main.c        **** 
+  95:main.c        **** /*
+  96:main.c        ****  * Watchdog-reset is issued at exit 
+  97:main.c        ****  * define the timeout-value here (see avr-libc manual)
+  98:main.c        ****  */
+  99:main.c        **** #define EXIT_WDT_TIME   WDTO_250MS
+ 100:main.c        **** 
+ 101:main.c        **** /*
+ 102:main.c        ****  * Выбор режима загрузчика
+ 103:main.c        ****  * SIMPLE-Mode - Загрузчик стартует когда нажата его кнопка
+ 104:main.c        ****  *   переход к основной программе осуществляется после сброса 
+ 105:main.c        ****  *   (кнопка должна быть отжата) либо по команде от программатора
+ 106:main.c        ****  *   При этом режиме вывод на кнопку конфигурируется как вход-с подтягом,
+ 107:main.c        ****  *   но при выходе из загрузчика все выставляется по умолчанию
+ 108:main.c        ****  * POWERSAVE-Mode - Startup is separated in two loops
+ 109:main.c        ****  *   which makes power-saving a little easier if no firmware
+ 110:main.c        ****  *   is on the chip. Needs more memory
+ 111:main.c        ****  * BOOTICE-Mode - для зашивки  JTAGICE файла upgrade.ebn в Мегу16.
+ 112:main.c        ****  *   что превращает ее в JTAG отладчик. Разумеется нужно добавить весь необходимый
+ 113:main.c        ****  *   обвяз на кристалл для этого. И частота должна быть везде прописана как 7372800
+ 114:main.c        ****  *   в F_CPU Для совместимости с родной прошивкой JTAG ICE
+ 115:main.c        ****  * WAIT-mode Bootloader ожидает команды на вход, если ее не было в течении промежутка времени
+ 116:main.c        ****  *   (который настраивается) то проихсодит переход к основной программе.
+ 117:main.c        ****  */
+ 118:main.c        **** #define START_SIMPLE
+ 119:main.c        **** //#define START_WAIT
+ 120:main.c        **** //#define START_POWERSAVE
+ 121:main.c        **** //#define START_BOOTICE
+ 122:main.c        **** 
+ 123:main.c        **** /* Команда для входа в загрузчик в START_WAIT */
+ 124:main.c        **** #define START_WAIT_UARTCHAR 'S'
+ 125:main.c        **** 
+ 126:main.c        **** /* Выдержка для START_WAIT mode ( t = WAIT_TIME * 10ms ) */
+ 127:main.c        **** #define WAIT_VALUE 400 /* сейчас: 300*10ms = 3000ms = 3sec */
+ 128:main.c        **** 
+ 129:main.c        **** /*
+ 130:main.c        ****  * enable/disable readout of fuse and lock-bits
+ 131:main.c        ****  * (AVRPROG has to detect the AVR correctly by device-code
+ 132:main.c        ****  * to show the correct information).
+ 133:main.c        ****  */
+ 134:main.c        **** //#define ENABLEREADFUSELOCK
+ 135:main.c        **** 
+ 136:main.c        **** /* enable/disable write of lock-bits
+ 137:main.c        ****  * WARNING: lock-bits can not be reseted by bootloader (as far as I know)
+ 138:main.c        ****  * Only protection no unprotection, "chip erase" from bootloader only
+ 139:main.c        ****  * clears the flash but does no real "chip erase" (this is not possible
+ 140:main.c        ****  * with a bootloader as far as I know)
+ 141:main.c        ****  * Keep this undefined!
+ 142:main.c        ****  */
+ 143:main.c        **** //#define WRITELOCKBITS
+ 144:main.c        **** 
+ 145:main.c        **** /*
+ 146:main.c        ****  * define the following if the bootloader should not output
+ 147:main.c        ****  * itself at flash read (will fake an empty boot-section)
+ 148:main.c        ****  */
+ 149:main.c        **** //#define READ_PROTECT_BOOTLOADER 
+ 150:main.c        **** 
+ 151:main.c        **** #define VERSION_HIGH '0'
+ 152:main.c        **** #define VERSION_LOW  '8'
+ 153:main.c        **** 
+ 154:main.c        **** #define GET_LOCK_BITS           0x0001
+ 155:main.c        **** #define GET_LOW_FUSE_BITS       0x0000
+ 156:main.c        **** #define GET_HIGH_FUSE_BITS      0x0003
+ 157:main.c        **** #define GET_EXTENDED_FUSE_BITS  0x0002
+ 158:main.c        **** 
+ 159:main.c        **** /* Расчет делителя частоты для USART*/
+ 160:main.c        **** #ifdef UART_DOUBLESPEED
+ 161:main.c        **** 
+ 162:main.c        **** 	#define UART_CALC_BAUDRATE(baudRate) ((uint32_t)((F_CPU) + ((uint32_t)baudRate * 4UL)) / ((uint32_
+ 163:main.c        **** 
+ 164:main.c        **** #else
+ 165:main.c        **** 
+ 166:main.c        **** 	#define UART_CALC_BAUDRATE(baudRate) ((uint32_t)((F_CPU) + ((uint32_t)baudRate * 8UL)) / ((uint32_
+ 167:main.c        **** 
+ 168:main.c        **** #endif
+ 169:main.c        **** 
+ 170:main.c        **** 
+ 171:main.c        **** #include <stdint.h>
+ 172:main.c        **** #include <avr/io.h>
+ 173:main.c        **** #include <avr/wdt.h>
+ 174:main.c        **** #include <avr/boot.h>
+ 175:main.c        **** #include <avr/pgmspace.h>
+ 176:main.c        **** #include <avr/eeprom.h>
+ 177:main.c        **** #include <avr/interrupt.h>
+ 178:main.c        **** #include <util/delay.h>
+ 179:main.c        **** 
+ 180:main.c        **** #include "chipdef.h"
+ 181:main.c        **** 
+ 182:main.c        **** uint8_t gBuffer[SPM_PAGESIZE];
+ 183:main.c        **** 
+ 184:main.c        **** #if defined(BOOTLOADERHASNOVECTORS)
+ 185:main.c        **** 	#warning "This Bootloader does not link interrupt vectors - see makefile"
+ 186:main.c        **** 	/* make the linker happy - it wants to see __vector_default */
+ 187:main.c        **** 	// void __vector_default(void) { ; }
+ 188:main.c        **** 	void __vector_default(void) { ; }
+ 189:main.c        **** #endif
+ 190:main.c        **** 
+ 191:main.c        **** static void sendchar(uint8_t data)
+ 192:main.c        **** {
+ 118               	.LM0:
+ 119               	.LFBB1:
+ 120               	/* prologue: function */
+ 121               	/* frame size = 0 */
+ 122               	/* stack size = 0 */
+ 123               	.L__stack_usage = 0
+ 124               	.L2:
+ 193:main.c        **** 	while (!(UART_STATUS & (1<<UART_TXREADY)));
+ 126               	.LM1:
+ 127 0000 5D9B      		sbis 0xb,5
+ 128 0002 00C0      		rjmp .L2
+ 194:main.c        **** 	UART_DATA = data;
+ 130               	.LM2:
+ 131 0004 8CB9      		out 0xc,r24
+ 132 0006 0895      		ret
+ 134               	.Lscope1:
+ 137               	recvchar:
+ 195:main.c        **** }
+ 196:main.c        **** 
+ 197:main.c        **** static uint8_t recvchar(void)
+ 198:main.c        **** {
+ 139               	.LM3:
+ 140               	.LFBB2:
+ 141               	/* prologue: function */
+ 142               	/* frame size = 0 */
+ 143               	/* stack size = 0 */
+ 144               	.L__stack_usage = 0
+ 145               	.L7:
+ 199:main.c        **** 	while (!(UART_STATUS & (1<<UART_RXREADY)));
+ 147               	.LM4:
+ 148 0008 5F9B      		sbis 0xb,7
+ 149 000a 00C0      		rjmp .L7
+ 200:main.c        **** 	return UART_DATA;
+ 151               	.LM5:
+ 152 000c 8CB1      		in r24,0xc
+ 201:main.c        **** }
+ 154               	.LM6:
+ 155 000e 0895      		ret
+ 157               	.Lscope2:
+ 159               	.global	__vector_default
+ 161               	__vector_default:
+ 188:main.c        **** #endif
+ 163               	.LM7:
+ 164               	.LFBB3:
+ 165               	/* prologue: function */
+ 166               	/* frame size = 0 */
+ 167               	/* stack size = 0 */
+ 168               	.L__stack_usage = 0
+ 169 0010 0895      		ret
+ 171               	.Lscope3:
+ 172               		.section	.text.startup,"ax",@progbits
+ 174               	.global	main
+ 176               	main:
+ 202:main.c        **** 
+ 203:main.c        **** static inline void eraseFlash(void)
+ 204:main.c        **** {
+ 205:main.c        **** 	// erase only main section (bootloader protection)
+ 206:main.c        **** 	uint32_t addr = 0;
+ 207:main.c        **** 	while (APP_END > addr) 
+ 208:main.c        **** 		{
+ 209:main.c        **** 		boot_page_erase(addr);		// Perform page erase
+ 210:main.c        **** 		boot_spm_busy_wait();		// Wait until the memory is erased.
+ 211:main.c        **** 		addr += SPM_PAGESIZE;
+ 212:main.c        **** 		}
+ 213:main.c        **** 	boot_rww_enable();
+ 214:main.c        **** }
+ 215:main.c        **** 
+ 216:main.c        **** static inline void recvBuffer(pagebuf_t size)
+ 217:main.c        **** {
+ 218:main.c        **** 	pagebuf_t cnt;
+ 219:main.c        **** 	uint8_t *tmp = gBuffer;
+ 220:main.c        **** 
+ 221:main.c        **** 	for (cnt = 0; cnt < sizeof(gBuffer); cnt++) 
+ 222:main.c        **** 		{
+ 223:main.c        **** 		*tmp++ = (cnt < size) ? recvchar() : 0xFF;
+ 224:main.c        **** 		}
+ 225:main.c        **** }
+ 226:main.c        **** 
+ 227:main.c        **** static inline uint16_t writeFlashPage(uint16_t waddr, pagebuf_t size)
+ 228:main.c        **** {
+ 229:main.c        **** 	uint32_t pagestart = (uint32_t)waddr<<1;
+ 230:main.c        **** 	uint32_t baddr = pagestart;
+ 231:main.c        **** 	uint16_t data;
+ 232:main.c        **** 	uint8_t *tmp = gBuffer;
+ 233:main.c        **** 
+ 234:main.c        **** 	do 
+ 235:main.c        **** 		{
+ 236:main.c        **** 		data = *tmp++;
+ 237:main.c        **** 		data |= *tmp++ << 8;
+ 238:main.c        **** 		boot_page_fill(baddr, data);	// call asm routine.
+ 239:main.c        **** 
+ 240:main.c        **** 		baddr += 2;			// Select next word in memory
+ 241:main.c        **** 		size -= 2;			// Reduce number of bytes to write by two
+ 242:main.c        **** 		} 
+ 243:main.c        **** 	while (size);				// Loop until all bytes written
+ 244:main.c        **** 
+ 245:main.c        **** 	boot_page_write(pagestart);
+ 246:main.c        **** 	boot_spm_busy_wait();
+ 247:main.c        **** 	boot_rww_enable();		// Re-enable the RWW section
+ 248:main.c        **** 
+ 249:main.c        **** 	return baddr>>1;
+ 250:main.c        **** }
+ 251:main.c        **** 
+ 252:main.c        **** static inline uint16_t writeEEpromPage(uint16_t address, pagebuf_t size)
+ 253:main.c        **** {
+ 254:main.c        **** 	uint8_t *tmp = gBuffer;
+ 255:main.c        **** 
+ 256:main.c        **** 	do 
+ 257:main.c        **** 		{
+ 258:main.c        **** 		eeprom_write_byte( (uint8_t*)address, *tmp++ );
+ 259:main.c        **** 		address++;			// Select next byte
+ 260:main.c        **** 		size--;				// Decreas number of bytes to write
+ 261:main.c        **** 		}
+ 262:main.c        **** 	while (size);				// Loop until all bytes written
+ 263:main.c        **** 
+ 264:main.c        **** 	// eeprom_busy_wait();
+ 265:main.c        **** 
+ 266:main.c        **** 	return address;
+ 267:main.c        **** }
+ 268:main.c        **** 
+ 269:main.c        **** static inline uint16_t readFlashPage(uint16_t waddr, pagebuf_t size)
+ 270:main.c        **** {
+ 271:main.c        **** 	uint32_t baddr = (uint32_t)waddr<<1;
+ 272:main.c        **** 	uint16_t data;
+ 273:main.c        **** 
+ 274:main.c        **** 	do 
+ 275:main.c        **** 	{
+ 276:main.c        **** 
+ 277:main.c        **** #ifndef READ_PROTECT_BOOTLOADER
+ 278:main.c        **** #warning "Bootloader not read-protected"
+ 279:main.c        **** 
+ 280:main.c        **** 	#if defined(RAMPZ)
+ 281:main.c        **** 		data = pgm_read_word_far(baddr);
+ 282:main.c        **** 	#else
+ 283:main.c        **** 		data = pgm_read_word_near(baddr);
+ 284:main.c        **** 	#endif
+ 285:main.c        **** 
+ 286:main.c        **** #else
+ 287:main.c        **** 		// don't read bootloader
+ 288:main.c        **** 		if ( baddr < APP_END ) 
+ 289:main.c        **** 		{
+ 290:main.c        **** 		#if defined(RAMPZ)
+ 291:main.c        **** 			data = pgm_read_word_far(baddr);
+ 292:main.c        **** 		#else
+ 293:main.c        **** 			data = pgm_read_word_near(baddr);
+ 294:main.c        **** 		#endif
+ 295:main.c        **** 		}
+ 296:main.c        **** 		else 
+ 297:main.c        **** 		{
+ 298:main.c        **** 		data = 0xFFFF; // fake empty
+ 299:main.c        **** 		}
+ 300:main.c        **** #endif
+ 301:main.c        **** 		sendchar(data);			// send LSB
+ 302:main.c        **** 		sendchar((data >> 8));		// send MSB
+ 303:main.c        **** 		baddr += 2;			// Select next word in memory
+ 304:main.c        **** 		size -= 2;			// Subtract two bytes from number of bytes to read
+ 305:main.c        **** 	} 
+ 306:main.c        **** 	while (size);				// Repeat until block has been read
+ 307:main.c        **** 	return baddr>>1;
+ 308:main.c        **** }
+ 309:main.c        **** 
+ 310:main.c        **** static inline uint16_t readEEpromPage(uint16_t address, pagebuf_t size)
+ 311:main.c        **** {
+ 312:main.c        **** 	do 
+ 313:main.c        **** 	{
+ 314:main.c        **** 	sendchar( eeprom_read_byte( (uint8_t*)address ) );
+ 315:main.c        **** 	address++;
+ 316:main.c        **** 	size--;				// Decrease number of bytes to read
+ 317:main.c        **** 	} 
+ 318:main.c        **** 	while (size);				// Repeat until block has been read
+ 319:main.c        **** 
+ 320:main.c        **** 	return address;
+ 321:main.c        **** }
+ 322:main.c        **** 
+ 323:main.c        **** #if defined(ENABLEREADFUSELOCK)
+ 324:main.c        **** static uint8_t read_fuse_lock(uint16_t addr)
+ 325:main.c        **** {
+ 326:main.c        **** 	uint8_t mode = (1<<BLBSET) | (1<<SPMEN);
+ 327:main.c        **** 	uint8_t retval;
+ 328:main.c        **** 
+ 329:main.c        **** 	asm volatile
+ 330:main.c        **** 	(
+ 331:main.c        **** 		"movw r30, %3\n\t"		/* Z to addr */ \
+ 332:main.c        **** 		"sts %0, %2\n\t"		/* set mode in SPM_REG */ \
+ 333:main.c        **** 		"lpm\n\t"			/* load fuse/lock value into r0 */ \
+ 334:main.c        **** 		"mov %1,r0\n\t"			/* save return value */ \
+ 335:main.c        **** 		: "=m" (SPM_REG),
+ 336:main.c        **** 		  "=r" (retval)
+ 337:main.c        **** 		: "r" (mode),
+ 338:main.c        **** 		  "r" (addr)
+ 339:main.c        **** 		: "r30", "r31", "r0"
+ 340:main.c        **** 	);
+ 341:main.c        **** 	return retval;
+ 342:main.c        **** }
+ 343:main.c        **** #endif
+ 344:main.c        **** 
+ 345:main.c        **** static void send_boot(void)
+ 346:main.c        **** {
+ 347:main.c        **** 	sendchar('A');
+ 348:main.c        **** 	sendchar('V');
+ 349:main.c        **** 	sendchar('R');
+ 350:main.c        **** 	sendchar('B');
+ 351:main.c        **** 	sendchar('O');
+ 352:main.c        **** 	sendchar('O');
+ 353:main.c        **** 	sendchar('T');
+ 354:main.c        **** }
+ 355:main.c        **** 
+ 356:main.c        **** static void (*jump_to_app)(void) = 0x0000;
+ 357:main.c        **** 
+ 358:main.c        **** int main(void)
+ 359:main.c        **** {
+ 178               	.LM8:
+ 179               	.LFBB4:
+ 181               	.LM9:
+ 182 0000 CF93      		push r28
+ 183 0002 DF93      		push r29
+ 184 0004 1F92      		push __zero_reg__
+ 185 0006 CDB7      		in r28,__SP_L__
+ 186 0008 DEB7      		in r29,__SP_H__
+ 187               	/* prologue: function */
+ 188               	/* frame size = 1 */
+ 189               	/* stack size = 3 */
+ 190               	.L__stack_usage = 3
+ 360:main.c        **** 	uint16_t address = 0;
+ 361:main.c        **** 	uint8_t device = 0, val;
+ 362:main.c        **** 
+ 363:main.c        **** 
+ 364:main.c        **** 
+ 365:main.c        **** #ifdef ENABLE_BOOT_LED	// LED ON
+ 366:main.c        **** 	BIPORT |= (1<<BIPNUM);	
+ 192               	.LM10:
+ 193 000a 959A      		sbi 0x12,5
+ 367:main.c        **** 	BIDDR  |= (1<<BIPNUM);
+ 195               	.LM11:
+ 196 000c 8D9A      		sbi 0x11,5
+ 368:main.c        **** #endif
+ 369:main.c        **** 
+ 370:main.c        **** 
+ 371:main.c        **** #ifdef DISABLE_WDT_AT_STARTUP
+ 372:main.c        **** 	#ifdef WDT_OFF_SPECIAL
+ 373:main.c        **** 		#warning "using target specific watchdog_off"
+ 374:main.c        **** 		bootloader_wdt_off();
+ 375:main.c        **** 	#else
+ 376:main.c        **** 		cli();
+ 198               	.LM12:
+ 199               	/* #APP */
+ 200               	 ;  376 "main.c" 1
+ 201 000e F894      		cli
+ 202               	 ;  0 "" 2
+ 377:main.c        **** 		wdt_reset();
+ 204               	.LM13:
+ 205               	 ;  377 "main.c" 1
+ 206 0010 A895      		wdr
+ 207               	 ;  0 "" 2
+ 208               	/* #NOAPP */
+ 209               	.LBB30:
+ 210               	.LBB31:
+ 212               	.Ltext1:
+   1:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /* Copyright (c) 2002, 2004 Marek Michalkiewicz
+   2:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    Copyright (c) 2005, 2006, 2007 Eric B. Weddington
+   3:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    All rights reserved.
+   4:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+   5:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    Redistribution and use in source and binary forms, with or without
+   6:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    modification, are permitted provided that the following conditions are met:
+   7:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+   8:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    * Redistributions of source code must retain the above copyright
+   9:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****      notice, this list of conditions and the following disclaimer.
+  10:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  11:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    * Redistributions in binary form must reproduce the above copyright
+  12:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****      notice, this list of conditions and the following disclaimer in
+  13:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****      the documentation and/or other materials provided with the
+  14:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****      distribution.
+  15:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  16:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    * Neither the name of the copyright holders nor the names of
+  17:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****      contributors may be used to endorse or promote products derived
+  18:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****      from this software without specific prior written permission.
+  19:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  20:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  21:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  22:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  23:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  24:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  25:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  26:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  27:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  28:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  29:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  30:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  31:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  32:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /* $Id$ */
+  33:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  34:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /*
+  35:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    avr/wdt.h - macros for AVR watchdog timer
+  36:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****  */
+  37:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  38:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #ifndef _AVR_WDT_H_
+  39:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define _AVR_WDT_H_
+  40:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  41:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #include <avr/io.h>
+  42:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #include <stdint.h>
+  43:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  44:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /** \file */
+  45:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /** \defgroup avr_watchdog <avr/wdt.h>: Watchdog timer handling
+  46:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     \code #include <avr/wdt.h> \endcode
+  47:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  48:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     This header file declares the interface to some inline macros
+  49:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     handling the watchdog timer present in many AVR devices.  In order
+  50:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     to prevent the watchdog timer configuration from being
+  51:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     accidentally altered by a crashing application, a special timed
+  52:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     sequence is required in order to change it.  The macros within
+  53:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     this header file handle the required sequence automatically
+  54:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     before changing any value.  Interrupts will be disabled during
+  55:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     the manipulation.
+  56:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  57:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     \note Depending on the fuse configuration of the particular
+  58:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     device, further restrictions might apply, in particular it might
+  59:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     be disallowed to turn off the watchdog timer.
+  60:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  61:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     Note that for newer devices (ATmega88 and newer, effectively any
+  62:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     AVR that has the option to also generate interrupts), the watchdog
+  63:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     timer remains active even after a system reset (except a power-on
+  64:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     condition), using the fastest prescaler value (approximately 15
+  65:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     ms).  It is therefore required to turn off the watchdog early
+  66:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     during program startup, the datasheet recommends a sequence like
+  67:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     the following:
+  68:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  69:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     \code
+  70:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     #include <stdint.h>
+  71:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     #include <avr/wdt.h>
+  72:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  73:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     uint8_t mcusr_mirror __attribute__ ((section (".noinit")));
+  74:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  75:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     void get_mcusr(void) \
+  76:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       __attribute__((naked)) \
+  77:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       __attribute__((section(".init3")));
+  78:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     void get_mcusr(void)
+  79:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     {
+  80:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       mcusr_mirror = MCUSR;
+  81:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       MCUSR = 0;
+  82:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       wdt_disable();
+  83:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     }
+  84:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     \endcode
+  85:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  86:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     Saving the value of MCUSR in \c mcusr_mirror is only needed if the
+  87:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     application later wants to examine the reset source, but in particular, 
+  88:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     clearing the watchdog reset flag before disabling the
+  89:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     watchdog is required, according to the datasheet.
+  90:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** */
+  91:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  92:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /**
+  93:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    \ingroup avr_watchdog
+  94:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    Reset the watchdog timer.  When the watchdog timer is enabled,
+  95:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    a call to this instruction is required before the timer expires,
+  96:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    otherwise a watchdog-initiated device reset will occur. 
+  97:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** */
+  98:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+  99:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_reset() __asm__ __volatile__ ("wdr")
+ 100:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 101:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 102:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #if defined(WDP3)
+ 103:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** # define _WD_PS3_MASK       _BV(WDP3)
+ 104:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #else
+ 105:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** # define _WD_PS3_MASK       0x00
+ 106:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #endif
+ 107:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 108:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #if defined(WDTCSR)
+ 109:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #  define _WD_CONTROL_REG     WDTCSR
+ 110:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #elif defined(WDTCR)
+ 111:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #  define _WD_CONTROL_REG     WDTCR
+ 112:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #else
+ 113:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #  define _WD_CONTROL_REG     WDT
+ 114:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #endif
+ 115:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 116:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #if defined(WDTOE)
+ 117:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define _WD_CHANGE_BIT      WDTOE
+ 118:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #else
+ 119:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define _WD_CHANGE_BIT      WDCE
+ 120:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #endif
+ 121:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 122:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 123:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /**
+ 124:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    \ingroup avr_watchdog
+ 125:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    Enable the watchdog timer, configuring it for expiry after
+ 126:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    \c timeout (which is a combination of the \c WDP0 through
+ 127:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    \c WDP2 bits to write into the \c WDTCR register; For those devices 
+ 128:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    that have a \c WDTCSR register, it uses the combination of the \c WDP0 
+ 129:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    through \c WDP3 bits).
+ 130:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 131:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    See also the symbolic constants \c WDTO_15MS et al.
+ 132:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** */
+ 133:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 134:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 135:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #if defined(__AVR_XMEGA__)
+ 136:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 137:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #if defined (WDT_CTRLA) && !defined(RAMPD)
+ 138:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 139:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_enable(timeout) \
+ 140:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** do { \
+ 141:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** uint8_t temp; \
+ 142:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __asm__ __volatile__ ( \
+ 143:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"wdr"									"\n\t" \
+ 144:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"out %[ccp_reg], %[ioreg_cen_mask]"		"\n\t" \
+ 145:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"lds %[tmp], %[wdt_reg]"				"\n\t" \
+ 146:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"sbr %[tmp], %[wdt_enable_timeout]"		"\n\t" \
+ 147:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"sts %[wdt_reg], %[tmp]"				"\n\t" \
+ 148:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"1:lds %[tmp], %[wdt_status_reg]"		"\n\t" \
+ 149:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"sbrc %[tmp], %[wdt_syncbusy_bit]"		"\n\t" \
+ 150:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"rjmp 1b"								"\n\t" \
+ 151:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	: [tmp]					"=r" (temp) \
+ 152:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	: [ccp_reg]				"I"  (_SFR_IO_ADDR(CCP)), \
+ 153:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	  [ioreg_cen_mask]		"r"  ((uint8_t)CCP_IOREG_gc), \
+ 154:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	  [wdt_reg]				"n"  (_SFR_MEM_ADDR(WDT_CTRLA)), \
+ 155:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	  [wdt_enable_timeout]	"M"  (timeout), \
+ 156:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	  [wdt_status_reg]		"n"  (_SFR_MEM_ADDR(WDT_STATUS)), \
+ 157:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	  [wdt_syncbusy_bit]	"I"  (WDT_SYNCBUSY_bm) \
+ 158:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ); \
+ 159:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** } while(0)
+ 160:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 161:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_disable() \
+ 162:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** do { \
+ 163:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** uint8_t temp; \
+ 164:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __asm__ __volatile__ (  \
+ 165:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"wdr"								"\n\t" \
+ 166:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"out %[ccp_reg], %[ioreg_cen_mask]" "\n\t" \
+ 167:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"lds %[tmp], %[wdt_reg]"			"\n\t" \
+ 168:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"cbr %[tmp], %[timeout_mask]"       "\n\t" \
+ 169:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	"sts %[wdt_reg], %[tmp]"			"\n\t" \
+ 170:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [tmp]            "=r" (temp) \
+ 171:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [ccp_reg]        "I" (_SFR_IO_ADDR(CCP)),       \
+ 172:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [ioreg_cen_mask] "r" ((uint8_t)CCP_IOREG_gc),   \
+ 173:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [wdt_reg]        "n" (_SFR_MEM_ADDR(WDT_CTRLA)),\
+ 174:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [timeout_mask]   "I" (WDT_PERIOD_gm) \
+ 175:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ); \
+ 176:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** } while(0)
+ 177:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 178:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #else // defined (WDT_CTRLA) && !defined(RAMPD)
+ 179:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 180:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** /*
+ 181:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    wdt_enable(timeout) for xmega devices
+ 182:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ** write signature (CCP_IOREG_gc) that enables change of protected I/O
+ 183:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    registers to the CCP register
+ 184:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ** At the same time,
+ 185:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    1) set WDT change enable (WDT_CEN_bm)
+ 186:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    2) enable WDT (WDT_ENABLE_bm)
+ 187:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    3) set timeout (timeout)
+ 188:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ** Synchronization starts when ENABLE bit of WDT is set. So, wait till it
+ 189:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    finishes (SYNCBUSY of STATUS register is automatically cleared after the
+ 190:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****    sync is finished).
+ 191:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** */
+ 192:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_enable(timeout) \
+ 193:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** do { \
+ 194:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** uint8_t temp; \
+ 195:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __asm__ __volatile__ (         \
+ 196:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "in __tmp_reg__, %[rampd]"              "\n\t" \
+ 197:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[rampd], __zero_reg__"            "\n\t" \
+ 198:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[ccp_reg], %[ioreg_cen_mask]"     "\n\t" \
+ 199:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "sts %[wdt_reg], %[wdt_enable_timeout]" "\n\t" \
+ 200:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "1:lds %[tmp], %[wdt_status_reg]"       "\n\t" \
+ 201:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "sbrc %[tmp], %[wdt_syncbusy_bit]"      "\n\t" \
+ 202:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "rjmp 1b"                               "\n\t" \
+ 203:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[rampd], __tmp_reg__"             "\n\t" \
+ 204:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [tmp]                "=r" (temp) \
+ 205:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [rampd]              "I" (_SFR_IO_ADDR(RAMPD)),      \
+ 206:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [ccp_reg]            "I" (_SFR_IO_ADDR(CCP)),        \
+ 207:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [ioreg_cen_mask]     "r" ((uint8_t)CCP_IOREG_gc),     \
+ 208:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [wdt_reg]            "n" (_SFR_MEM_ADDR(WDT_CTRL)),   \
+ 209:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [wdt_enable_timeout] "r" ((uint8_t)(WDT_CEN_bm | WDT_ENABLE_bm | timeout)), \
+ 210:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [wdt_status_reg]     "n" (_SFR_MEM_ADDR(WDT_STATUS)), \
+ 211:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [wdt_syncbusy_bit]   "I" (WDT_SYNCBUSY_bm)            \
+ 212:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : "r0" \
+ 213:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ); \
+ 214:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** } while(0)
+ 215:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 216:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_disable() \
+ 217:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __asm__ __volatile__ (  \
+ 218:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "in __tmp_reg__, %[rampd]"          "\n\t" \
+ 219:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[rampd], __zero_reg__"        "\n\t" \
+ 220:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[ccp_reg], %[ioreg_cen_mask]" "\n\t" \
+ 221:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "sts %[wdt_reg], %[disable_mask]"   "\n\t" \
+ 222:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[rampd], __tmp_reg__"         "\n\t" \
+ 223:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : \
+ 224:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [rampd]             "I" (_SFR_IO_ADDR(RAMPD)),    \
+ 225:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [ccp_reg]           "I" (_SFR_IO_ADDR(CCP)),      \
+ 226:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [ioreg_cen_mask]    "r" ((uint8_t)CCP_IOREG_gc),   \
+ 227:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [wdt_reg]           "n" (_SFR_MEM_ADDR(WDT_CTRL)), \
+ 228:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [disable_mask]      "r" ((uint8_t)((~WDT_ENABLE_bm) | WDT_CEN_bm)) \
+ 229:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : "r0" \
+ 230:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** );
+ 231:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 232:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #endif // defined (WDT_CTRLA) && !defined(RAMPD)
+ 233:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 234:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #elif defined(__AVR_TINY__)
+ 235:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 236:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_enable(value) \
+ 237:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __asm__ __volatile__ ( \
+ 238:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "in __tmp_reg__,__SREG__" "\n\t"  \
+ 239:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "cli" "\n\t"  \
+ 240:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "wdr" "\n\t"  \
+ 241:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[CCPADDRESS],%[SIGNATURE]" "\n\t"  \
+ 242:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[WDTREG],%[WDVALUE]" "\n\t"  \
+ 243:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out __SREG__,__tmp_reg__" "\n\t"  \
+ 244:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : /* no outputs */  \
+ 245:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [CCPADDRESS] "I" (_SFR_IO_ADDR(CCP)),  \
+ 246:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [SIGNATURE] "r" ((uint8_t)0xD8), \
+ 247:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [WDTREG] "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)), \
+ 248:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [WDVALUE] "r" ((uint8_t)((value & 0x08 ? _WD_PS3_MASK : 0x00) \
+ 249:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       | _BV(WDE) | (value & 0x07) )) \
+ 250:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : "r16" \
+ 251:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** )
+ 252:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 253:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #define wdt_disable() \
+ 254:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** do { \
+ 255:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** uint8_t temp_wd; \
+ 256:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __asm__ __volatile__ ( \
+ 257:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "in __tmp_reg__,__SREG__" "\n\t"  \
+ 258:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "cli" "\n\t"  \
+ 259:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "wdr" "\n\t"  \
+ 260:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[CCPADDRESS],%[SIGNATURE]" "\n\t"  \
+ 261:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "in  %[TEMP_WD],%[WDTREG]" "\n\t" \
+ 262:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "cbr %[TEMP_WD],%[WDVALUE]" "\n\t" \
+ 263:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out %[WDTREG],%[TEMP_WD]" "\n\t" \
+ 264:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     "out __SREG__,__tmp_reg__" "\n\t" \
+ 265:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : /*no output */ \
+ 266:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : [CCPADDRESS] "I" (_SFR_IO_ADDR(CCP)), \
+ 267:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [SIGNATURE] "r" ((uint8_t)0xD8), \
+ 268:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [WDTREG] "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)), \
+ 269:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [TEMP_WD] "d" (temp_wd), \
+ 270:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****       [WDVALUE] "n" (1 << WDE) \
+ 271:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****     : "r16" \
+ 272:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** ); \
+ 273:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** }while(0)
+ 274:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 275:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #elif defined(CCP)
+ 276:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 277:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** static __inline__
+ 278:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __attribute__ ((__always_inline__))
+ 279:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** void wdt_enable (const uint8_t value)
+ 280:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** {
+ 281:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	if (!_SFR_IO_REG_P (CCP) && !_SFR_IO_REG_P (_WD_CONTROL_REG))
+ 282:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 283:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 284:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"in __tmp_reg__,__SREG__" "\n\t"
+ 285:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"cli" "\n\t"
+ 286:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"wdr" "\n\t"
+ 287:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"sts %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 288:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"sts %[WDTREG],%[WDVALUE]" "\n\t"
+ 289:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out __SREG__,__tmp_reg__" "\n\t"
+ 290:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: /* no outputs */
+ 291:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: [CCPADDRESS] "n" (_SFR_MEM_ADDR(CCP)),
+ 292:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[SIGNATURE] "r" ((uint8_t)0xD8),
+ 293:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDTREG] "n" (_SFR_MEM_ADDR(_WD_CONTROL_REG)),
+ 294:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDVALUE] "r" ((uint8_t)((value & 0x08 ? _WD_PS3_MASK : 0x00)
+ 295:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				| _BV(WDE) | (value & 0x07) ))
+ 296:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: "r0"
+ 297:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			);
+ 298:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 299:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else if (!_SFR_IO_REG_P (CCP) && _SFR_IO_REG_P (_WD_CONTROL_REG))
+ 300:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 301:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 302:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"in __tmp_reg__,__SREG__" "\n\t"
+ 303:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"cli" "\n\t"
+ 304:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"wdr" "\n\t"
+ 305:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"sts %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 306:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out %[WDTREG],%[WDVALUE]" "\n\t"
+ 307:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out __SREG__,__tmp_reg__" "\n\t"
+ 308:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: /* no outputs */
+ 309:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: [CCPADDRESS] "n" (_SFR_MEM_ADDR(CCP)),
+ 310:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[SIGNATURE] "r" ((uint8_t)0xD8),
+ 311:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDTREG] "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)),
+ 312:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDVALUE] "r" ((uint8_t)((value & 0x08 ? _WD_PS3_MASK : 0x00)
+ 313:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				| _BV(WDE) | (value & 0x07) ))
+ 314:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: "r0"
+ 315:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			);
+ 316:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 317:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else if (_SFR_IO_REG_P (CCP) && !_SFR_IO_REG_P (_WD_CONTROL_REG))
+ 318:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 319:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 320:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"in __tmp_reg__,__SREG__" "\n\t"
+ 321:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"cli" "\n\t"
+ 322:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"wdr" "\n\t"
+ 323:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 324:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"sts %[WDTREG],%[WDVALUE]" "\n\t"
+ 325:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out __SREG__,__tmp_reg__" "\n\t"
+ 326:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: /* no outputs */
+ 327:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: [CCPADDRESS] "I" (_SFR_IO_ADDR(CCP)),
+ 328:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[SIGNATURE] "r" ((uint8_t)0xD8),
+ 329:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDTREG] "n" (_SFR_MEM_ADDR(_WD_CONTROL_REG)),
+ 330:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDVALUE] "r" ((uint8_t)((value & 0x08 ? _WD_PS3_MASK : 0x00)
+ 331:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				| _BV(WDE) | (value & 0x07) ))
+ 332:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: "r0"
+ 333:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			);
+ 334:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 335:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else
+ 336:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****  	{
+ 337:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 338:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"in __tmp_reg__,__SREG__" "\n\t"
+ 339:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"cli" "\n\t"
+ 340:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"wdr" "\n\t"
+ 341:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 342:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out %[WDTREG],%[WDVALUE]" "\n\t"
+ 343:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			"out __SREG__,__tmp_reg__" "\n\t"
+ 344:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: /* no outputs */
+ 345:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: [CCPADDRESS] "I" (_SFR_IO_ADDR(CCP)),
+ 346:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[SIGNATURE] "r" ((uint8_t)0xD8),
+ 347:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDTREG] "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)),
+ 348:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			[WDVALUE] "r" ((uint8_t)((value & 0x08 ? _WD_PS3_MASK : 0x00)
+ 349:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				| _BV(WDE) | (value & 0x07) ))
+ 350:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			: "r0"
+ 351:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 			);
+ 352:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 353:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** }
+ 354:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 355:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** static __inline__
+ 356:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __attribute__ ((__always_inline__))
+ 357:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** void wdt_disable (void)
+ 358:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** {
+ 359:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	if (!_SFR_IO_REG_P (CCP) && !_SFR_IO_REG_P(_WD_CONTROL_REG))
+ 360:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 361:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         uint8_t temp_wd;
+ 362:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         __asm__ __volatile__ (
+ 363:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 364:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cli" "\n\t"
+ 365:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"wdr" "\n\t"
+ 366:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"sts %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 367:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"lds %[TEMP_WD],%[WDTREG]" "\n\t"
+ 368:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cbr %[TEMP_WD],%[WDVALUE]" "\n\t"
+ 369:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"sts %[WDTREG],%[TEMP_WD]" "\n\t"
+ 370:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out __SREG__,__tmp_reg__" "\n\t"
+ 371:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: /*no output */
+ 372:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: [CCPADDRESS] "n" (_SFR_MEM_ADDR(CCP)),
+ 373:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[SIGNATURE] "r" ((uint8_t)0xD8),
+ 374:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDTREG] "n" (_SFR_MEM_ADDR(_WD_CONTROL_REG)),
+ 375:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[TEMP_WD] "d" (temp_wd),
+ 376:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDVALUE] "n" (1 << WDE)
+ 377:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "r0"
+ 378:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				);
+ 379:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 380:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else if (!_SFR_IO_REG_P (CCP) && _SFR_IO_REG_P(_WD_CONTROL_REG))
+ 381:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 382:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         uint8_t temp_wd;
+ 383:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         __asm__ __volatile__ (
+ 384:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 385:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cli" "\n\t"
+ 386:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"wdr" "\n\t"
+ 387:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"sts %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 388:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in %[TEMP_WD],%[WDTREG]" "\n\t"
+ 389:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cbr %[TEMP_WD],%[WDVALUE]" "\n\t"
+ 390:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out %[WDTREG],%[TEMP_WD]" "\n\t"
+ 391:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out __SREG__,__tmp_reg__" "\n\t"
+ 392:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: /*no output */
+ 393:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: [CCPADDRESS] "n" (_SFR_MEM_ADDR(CCP)),
+ 394:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[SIGNATURE] "r" ((uint8_t)0xD8),
+ 395:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDTREG] "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)),
+ 396:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[TEMP_WD] "d" (temp_wd),
+ 397:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDVALUE] "n" (1 << WDE)
+ 398:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "r0"
+ 399:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				);
+ 400:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 401:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else if (_SFR_IO_REG_P (CCP) && !_SFR_IO_REG_P(_WD_CONTROL_REG))
+ 402:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 403:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         uint8_t temp_wd;
+ 404:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         __asm__ __volatile__ (
+ 405:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 406:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cli" "\n\t"
+ 407:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"wdr" "\n\t"
+ 408:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 409:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"lds %[TEMP_WD],%[WDTREG]" "\n\t"
+ 410:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cbr %[TEMP_WD],%[WDVALUE]" "\n\t"
+ 411:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"sts %[WDTREG],%[TEMP_WD]" "\n\t"
+ 412:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out __SREG__,__tmp_reg__" "\n\t"
+ 413:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: /*no output */
+ 414:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: [CCPADDRESS] "I" (_SFR_IO_ADDR(CCP)),
+ 415:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[SIGNATURE] "r" ((uint8_t)0xD8),
+ 416:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDTREG] "n" (_SFR_MEM_ADDR(_WD_CONTROL_REG)),
+ 417:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[TEMP_WD] "d" (temp_wd),
+ 418:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDVALUE] "n" (1 << WDE)
+ 419:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "r0"
+ 420:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				);
+ 421:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 422:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else
+ 423:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 424:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         uint8_t temp_wd;
+ 425:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         __asm__ __volatile__ (
+ 426:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 427:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cli" "\n\t"
+ 428:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"wdr" "\n\t"
+ 429:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out %[CCPADDRESS],%[SIGNATURE]" "\n\t"
+ 430:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in %[TEMP_WD],%[WDTREG]" "\n\t"
+ 431:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cbr %[TEMP_WD],%[WDVALUE]" "\n\t"
+ 432:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out %[WDTREG],%[TEMP_WD]" "\n\t"
+ 433:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out __SREG__,__tmp_reg__" "\n\t"
+ 434:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: /*no output */
+ 435:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: [CCPADDRESS] "I" (_SFR_IO_ADDR(CCP)),
+ 436:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[SIGNATURE] "r" ((uint8_t)0xD8),
+ 437:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDTREG] "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)),
+ 438:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[TEMP_WD] "d" (temp_wd),
+ 439:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				[WDVALUE] "n" (1 << WDE)
+ 440:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "r0"
+ 441:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				);
+ 442:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 443:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** }
+ 444:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 445:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** #else
+ 446:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 447:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** static __inline__
+ 448:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __attribute__ ((__always_inline__))
+ 449:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** void wdt_enable (const uint8_t value)
+ 450:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** {
+ 451:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	if (_SFR_IO_REG_P (_WD_CONTROL_REG))
+ 452:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 453:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 454:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 455:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cli" "\n\t"
+ 456:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"wdr" "\n\t"
+ 457:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out %0, %1" "\n\t"
+ 458:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out __SREG__,__tmp_reg__" "\n\t"
+ 459:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out %0, %2" "\n \t"
+ 460:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: /* no outputs */
+ 461:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "I" (_SFR_IO_ADDR(_WD_CONTROL_REG)),
+ 462:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"r" ((uint8_t)(_BV(_WD_CHANGE_BIT) | _BV(WDE))),
+ 463:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"r" ((uint8_t) ((value & 0x08 ? _WD_PS3_MASK : 0x00) |
+ 464:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 						_BV(WDE) | (value & 0x07)) )
+ 465:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "r0"
+ 466:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		);
+ 467:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 468:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	else
+ 469:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 470:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 471:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 472:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"cli" "\n\t"
+ 473:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"wdr" "\n\t"
+ 474:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"sts %0, %1" "\n\t"
+ 475:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"out __SREG__,__tmp_reg__" "\n\t"
+ 476:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"sts %0, %2" "\n \t"
+ 477:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: /* no outputs */
+ 478:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "n" (_SFR_MEM_ADDR(_WD_CONTROL_REG)),
+ 479:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"r" ((uint8_t)(_BV(_WD_CHANGE_BIT) | _BV(WDE))),
+ 480:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"r" ((uint8_t) ((value & 0x08 ? _WD_PS3_MASK : 0x00) |
+ 481:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 						_BV(WDE) | (value & 0x07)) )
+ 482:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				: "r0"
+ 483:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		);
+ 484:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	}
+ 485:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** }
+ 486:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 
+ 487:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** static __inline__
+ 488:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** __attribute__ ((__always_inline__))
+ 489:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** void wdt_disable (void)
+ 490:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** {
+ 491:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	if (_SFR_IO_REG_P (_WD_CONTROL_REG))
+ 492:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 	{
+ 493:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h ****         uint8_t register temp_reg;
+ 494:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 		__asm__ __volatile__ (
+ 214               	.LM14:
+ 215               	/* #APP */
+ 216               	 ;  494 "e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\
+ 217 0012 0FB6      		in __tmp_reg__,__SREG__
+ 218 0014 F894      		cli
+ 219 0016 A895      		wdr
+ 220 0018 81B5      		in  r24,33
+ 221 001a 8861      		ori r24,24
+ 222 001c 81BD      		out 33,r24
+ 223 001e 11BC      		out 33,__zero_reg__
+ 224 0020 0FBE      		out __SREG__,__tmp_reg__
+ 225               		
+ 226               	 ;  0 "" 2
+ 227               	/* #NOAPP */
+ 228               	.LBE31:
+ 229               	.LBE30:
+ 231               	.Ltext2:
+ 378:main.c        **** 		wdt_disable();
+ 379:main.c        **** 	#endif
+ 380:main.c        **** #endif
+ 381:main.c        **** 	
+ 382:main.c        **** #ifdef START_POWERSAVE
+ 383:main.c        **** 	uint8_t OK = 1;
+ 384:main.c        **** #endif
+ 385:main.c        **** 
+ 386:main.c        **** 	BLDDR  &= ~(1<<BLPNUM);		// set as Input
+ 233               	.LM15:
+ 234 0022 8D98      		cbi 0x11,5
+ 387:main.c        **** 	BLPORT |= (1<<BLPNUM);		// Enable pullup
+ 236               	.LM16:
+ 237 0024 959A      		sbi 0x12,5
+ 388:main.c        **** 	
+ 389:main.c        **** 	BL_2_DDR  &= ~(1<<BL_2_PNUM);		// set as Input
+ 239               	.LM17:
+ 240 0026 BF98      		cbi 0x17,7
+ 390:main.c        **** 	BL_2_PORT |= (1<<BL_2_PNUM);		// Enable pullup
+ 242               	.LM18:
+ 243 0028 C79A      		sbi 0x18,7
+ 391:main.c        **** 
+ 392:main.c        **** 	// Set baud rate
+ 393:main.c        **** 	UART_BAUD_HIGH = (UART_CALC_BAUDRATE(BAUDRATE)>>8) & 0xFF;
+ 245               	.LM19:
+ 246 002a 10BC      		out 0x20,__zero_reg__
+ 394:main.c        **** 	UART_BAUD_LOW = (UART_CALC_BAUDRATE(BAUDRATE) & 0xFF);
+ 248               	.LM20:
+ 249 002c 89E1      		ldi r24,lo8(25)
+ 250 002e 89B9      		out 0x9,r24
+ 395:main.c        **** 
+ 396:main.c        **** #ifdef UART_DOUBLESPEED
+ 397:main.c        **** 	UART_STATUS = ( 1<<UART_DOUBLE );
+ 398:main.c        **** #endif
+ 399:main.c        **** 
+ 400:main.c        **** 	UART_CTRL = UART_CTRL_DATA;
+ 252               	.LM21:
+ 253 0030 88E1      		ldi r24,lo8(24)
+ 254 0032 8AB9      		out 0xa,r24
+ 401:main.c        **** 	UART_CTRL2 = UART_CTRL2_DATA;
+ 256               	.LM22:
+ 257 0034 86E8      		ldi r24,lo8(-122)
+ 258 0036 80BD      		out 0x20,r24
+ 402:main.c        **** 	
+ 403:main.c        **** #if defined(START_POWERSAVE)
+ 404:main.c        **** 	/*
+ 405:main.c        **** 		This is an adoption of the Butterfly Bootloader startup-sequence.
+ 406:main.c        **** 		It may look a little strange but separating the login-loop from
+ 407:main.c        **** 		the main parser-loop gives a lot a possibilities (timeout, sleep-modes
+ 408:main.c        **** 	    etc.).
+ 409:main.c        **** 	*/
+ 410:main.c        **** 	for(;OK;) 
+ 411:main.c        **** 	{
+ 412:main.c        **** 		if ((BLPIN & (1<<BLPNUM))) 
+ 413:main.c        **** 		{
+ 414:main.c        **** 		// jump to main app if pin is not grounded
+ 415:main.c        **** 		BLPORT &= ~(1<<BLPNUM);	// set to default
+ 416:main.c        **** 
+ 417:main.c        **** 		#ifdef UART_DOUBLESPEED
+ 418:main.c        **** 			UART_STATUS &= ~( 1<<UART_DOUBLE );
+ 419:main.c        **** 		#endif
+ 420:main.c        **** 
+ 421:main.c        **** 
+ 422:main.c        **** 		#ifdef ENABLE_BOOT_LED	// LED OFF
+ 423:main.c        **** 		BIPORT &= ~(1<<BIPNUM);	
+ 424:main.c        **** 		BIDDR  &= ~(1<<BIPNUM);
+ 425:main.c        **** 		#endif
+ 426:main.c        **** 
+ 427:main.c        **** 		jump_to_app();		// Jump to application sector
+ 428:main.c        **** 
+ 429:main.c        **** 		} 
+ 430:main.c        **** 		else 
+ 431:main.c        **** 		{
+ 432:main.c        **** 		val = recvchar();
+ 433:main.c        **** 		/* ESC */
+ 434:main.c        **** 			if (val == 0x1B) 
+ 435:main.c        **** 			{
+ 436:main.c        **** 				// AVRPROG connection
+ 437:main.c        **** 				// Wait for signon
+ 438:main.c        **** 				while (val != 'S')
+ 439:main.c        **** 				val = recvchar();
+ 440:main.c        **** 				
+ 441:main.c        **** 				send_boot();			// Report signon
+ 442:main.c        **** 				OK = 0;
+ 443:main.c        **** 			} 
+ 444:main.c        **** 			else 
+ 445:main.c        **** 			{
+ 446:main.c        **** 			sendchar('?');
+ 447:main.c        **** 			}
+ 448:main.c        **** 	    }
+ 449:main.c        **** 		// Power-Save code here
+ 450:main.c        **** 	}
+ 451:main.c        **** 
+ 452:main.c        **** #elif defined(START_SIMPLE)
+ 453:main.c        **** 
+ 454:main.c        **** 	if ((BLPIN & (1<<BLPNUM)) && (BL_2_PIN & (1<<BL_2_PNUM))) 
+ 260               	.LM23:
+ 261 0038 859B      		sbis 0x10,5
+ 262 003a 00C0      		rjmp .L11
+ 264               	.LM24:
+ 265 003c B79B      		sbis 0x16,7
+ 266 003e 00C0      		rjmp .L11
+ 455:main.c        **** 	{
+ 456:main.c        **** 		// jump to main app if pin is not grounded
+ 457:main.c        **** 		BLPORT &= ~(1<<BLPNUM);		// set to default	
+ 268               	.LM25:
+ 269 0040 9598      		cbi 0x12,5
+ 458:main.c        **** 		BL_2_PORT &= ~(1<<BL_2_PNUM);		// set to default
+ 271               	.LM26:
+ 272 0042 C798      		cbi 0x18,7
+ 459:main.c        **** 			
+ 460:main.c        **** 	#ifdef UART_DOUBLESPEED
+ 461:main.c        **** 		UART_STATUS &= ~( 1<<UART_DOUBLE );
+ 462:main.c        **** 	#endif
+ 463:main.c        **** 
+ 464:main.c        **** 		#ifdef ENABLE_BOOT_LED	// LED OFF
+ 465:main.c        **** 		BIPORT &= ~(1<<BIPNUM);	
+ 274               	.LM27:
+ 275 0044 9598      		cbi 0x12,5
+ 466:main.c        **** 		BIDDR  &= ~(1<<BIPNUM);
+ 277               	.LM28:
+ 278 0046 8D98      		cbi 0x11,5
+ 467:main.c        **** 		#endif
+ 468:main.c        **** 
+ 469:main.c        **** 		jump_to_app();			// Jump to application sector
+ 280               	.LM29:
+ 281 0048 E0E0      		ldi r30,0
+ 282 004a F0E0      		ldi r31,0
+ 283 004c 0995      		icall
+ 284               	.L11:
+ 359:main.c        **** 	uint16_t address = 0;
+ 286               	.LM30:
+ 287 004e 10E0      		ldi r17,0
+ 288 0050 612C      		mov r6,__zero_reg__
+ 289 0052 712C      		mov r7,__zero_reg__
+ 290               	.LBB32:
+ 291               	.LBB33:
+ 293               	.Ltext3:
+ 453:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 295               	.LM31:
+ 296 0054 78E1      		ldi r23,lo8(24)
+ 297 0056 972E      		mov r9,r23
+ 298 0058 ECE0      		ldi r30,lo8(12)
+ 299 005a 8E2E      		mov r8,r30
+ 300               	.LBE33:
+ 301               	.LBE32:
+ 302               	.LBB35:
+ 303               	.LBB36:
+ 305               	.Ltext4:
+ 209:main.c        **** 		boot_spm_busy_wait();		// Wait until the memory is erased.
+ 307               	.LM32:
+ 308 005c F3E0      		ldi r31,lo8(3)
+ 309 005e 2F2E      		mov r2,r31
+ 213:main.c        **** }
+ 311               	.LM33:
+ 312 0060 01E1      		ldi r16,lo8(17)
+ 313 0062 A0E0      		ldi r26,lo8(gBuffer)
+ 314 0064 AA2E      		mov r10,r26
+ 315 0066 A0E0      		ldi r26,hi8(gBuffer)
+ 316 0068 BA2E      		mov r11,r26
+ 317               	.L12:
+ 318               	.LBE36:
+ 319               	.LBE35:
+ 470:main.c        **** 	}
+ 471:main.c        **** 
+ 472:main.c        **** #elif defined(START_WAIT)
+ 473:main.c        **** 
+ 474:main.c        **** 	uint16_t cnt = 0;
+ 475:main.c        **** 
+ 476:main.c        **** 	while (1) {
+ 477:main.c        **** 		if (UART_STATUS & (1<<UART_RXREADY))
+ 478:main.c        **** 			if (UART_DATA == START_WAIT_UARTCHAR)
+ 479:main.c        **** 				break;
+ 480:main.c        **** 
+ 481:main.c        **** 		if (cnt++ >= WAIT_VALUE) {
+ 482:main.c        **** 			BLPORT &= ~(1<<BLPNUM);		// set to default
+ 483:main.c        **** 
+ 484:main.c        **** 
+ 485:main.c        **** 			#ifdef ENABLE_BOOT_LED	// LED OFF
+ 486:main.c        **** 			BIPORT &= ~(1<<BIPNUM);	
+ 487:main.c        **** 			BIDDR  &= ~(1<<BIPNUM);
+ 488:main.c        **** 			#endif
+ 489:main.c        **** 			jump_to_app();			// Jump to application sector
+ 490:main.c        **** 		}
+ 491:main.c        **** 
+ 492:main.c        **** 		_delay_ms(10);
+ 493:main.c        **** 	}
+ 494:main.c        **** 	send_boot();
+ 495:main.c        **** 
+ 496:main.c        **** #elif defined(START_BOOTICE)
+ 497:main.c        **** #warning "BOOTICE mode - no startup-condition"
+ 498:main.c        **** 
+ 499:main.c        **** #else
+ 500:main.c        **** #error "Select START_ condition for bootloader in main.c"
+ 501:main.c        **** #endif
+ 502:main.c        **** 
+ 503:main.c        **** 
+ 504:main.c        **** 	for(;;) 
+ 505:main.c        **** 	{
+ 506:main.c        **** 		val = recvchar();
+ 321               	.LM34:
+ 322 006a 00D0      		rcall recvchar
+ 507:main.c        **** 		// Autoincrement?
+ 508:main.c        **** 		if (val == 'a') 
+ 324               	.LM35:
+ 325 006c 8136      		cpi r24,lo8(97)
+ 326 006e 01F4      		brne .L13
+ 509:main.c        **** 		{
+ 510:main.c        **** 			sendchar('Y');			// Autoincrement is quicker
+ 328               	.LM36:
+ 329 0070 89E5      		ldi r24,lo8(89)
+ 330 0072 00C0      		rjmp .L59
+ 331               	.L13:
+ 511:main.c        **** 
+ 512:main.c        **** 		//write address
+ 513:main.c        **** 		} 
+ 514:main.c        **** 		else if (val == 'A') 
+ 333               	.LM37:
+ 334 0074 8134      		cpi r24,lo8(65)
+ 335 0076 01F4      		brne .L15
+ 515:main.c        **** 		{
+ 516:main.c        **** 			address = recvchar();		//read address 8 MSB
+ 337               	.LM38:
+ 338 0078 00D0      		rcall recvchar
+ 339 007a 682E      		mov r6,r24
+ 340 007c 712C      		mov r7,__zero_reg__
+ 517:main.c        **** 			address = (address<<8) | recvchar();
+ 342               	.LM39:
+ 343 007e 762C      		mov r7,r6
+ 344 0080 6624      		clr r6
+ 345 0082 00D0      		rcall recvchar
+ 346 0084 682A      		or r6,r24
+ 347 0086 00C0      		rjmp .L60
+ 348               	.L15:
+ 518:main.c        **** 			sendchar('\r');
+ 519:main.c        **** 
+ 520:main.c        **** 		// Buffer load support
+ 521:main.c        **** 		} 
+ 522:main.c        **** 		else if (val == 'b') 
+ 350               	.LM40:
+ 351 0088 8236      		cpi r24,lo8(98)
+ 352 008a 01F4      		brne .L16
+ 523:main.c        **** 		{
+ 524:main.c        **** 			sendchar('Y');					// Report buffer load supported
+ 354               	.LM41:
+ 355 008c 89E5      		ldi r24,lo8(89)
+ 356 008e 00D0      		rcall sendchar
+ 525:main.c        **** 			sendchar((sizeof(gBuffer) >> 8) & 0xFF);	// Report buffer size in bytes
+ 358               	.LM42:
+ 359 0090 80E0      		ldi r24,0
+ 360 0092 00D0      		rcall sendchar
+ 526:main.c        **** 			sendchar(sizeof(gBuffer) & 0xFF);
+ 362               	.LM43:
+ 363 0094 80E4      		ldi r24,lo8(64)
+ 364 0096 00C0      		rjmp .L59
+ 365               	.L16:
+ 527:main.c        **** 
+ 528:main.c        **** 		// Start buffer load
+ 529:main.c        **** 		} 
+ 530:main.c        **** 		else if (val == 'B') 
+ 367               	.LM44:
+ 368 0098 8234      		cpi r24,lo8(66)
+ 369 009a 01F0      		breq .+2
+ 370 009c 00C0      		rjmp .L17
+ 371               	.LBB38:
+ 531:main.c        **** 		{
+ 532:main.c        **** 			pagebuf_t size;
+ 533:main.c        **** 			size = recvchar() << 8;				// Load high byte of buffersize
+ 373               	.LM45:
+ 374 009e 00D0      		rcall recvchar
+ 534:main.c        **** 			size |= recvchar();				// Load low byte of buffersize
+ 376               	.LM46:
+ 377 00a0 00D0      		rcall recvchar
+ 378 00a2 482E      		mov r4,r24
+ 535:main.c        **** 			val = recvchar();				// Load memory type ('E' or 'F')
+ 380               	.LM47:
+ 381 00a4 00D0      		rcall recvchar
+ 382 00a6 982F      		mov r25,r24
+ 383 00a8 50E0      		ldi r21,lo8(gBuffer)
+ 384 00aa E52E      		mov r14,r21
+ 385 00ac 50E0      		ldi r21,hi8(gBuffer)
+ 386 00ae F52E      		mov r15,r21
+ 387               	.LBB39:
+ 388               	.LBB40:
+ 221:main.c        **** 		{
+ 390               	.LM48:
+ 391 00b0 D12C      		mov r13,__zero_reg__
+ 392               	.L19:
+ 223:main.c        **** 		}
+ 394               	.LM49:
+ 395 00b2 D414      		cp r13,r4
+ 396 00b4 00F4      		brsh .L45
+ 397 00b6 9983      		std Y+1,r25
+ 398 00b8 00D0      		rcall recvchar
+ 399 00ba 9981      		ldd r25,Y+1
+ 400 00bc 00C0      		rjmp .L18
+ 401               	.L45:
+ 402 00be 8FEF      		ldi r24,lo8(-1)
+ 403               	.L18:
+ 404 00c0 F701      		movw r30,r14
+ 405 00c2 8193      		st Z+,r24
+ 406 00c4 7F01      		movw r14,r30
+ 221:main.c        **** 		{
+ 408               	.LM50:
+ 409 00c6 D394      		inc r13
+ 410 00c8 F0E4      		ldi r31,lo8(64)
+ 411 00ca DF12      		cpse r13,r31
+ 412 00cc 00C0      		rjmp .L19
+ 413               	.LBE40:
+ 414               	.LBE39:
+ 536:main.c        **** 			recvBuffer(size);
+ 537:main.c        **** 
+ 538:main.c        **** 			if (device == DEVTYPE) 
+ 416               	.LM51:
+ 417 00ce 1737      		cpi r17,lo8(119)
+ 418 00d0 01F0      		breq .+2
+ 419 00d2 00C0      		rjmp .L61
+ 539:main.c        **** 			{
+ 540:main.c        **** 				if (val == 'F') 
+ 421               	.LM52:
+ 422 00d4 9634      		cpi r25,lo8(70)
+ 423 00d6 01F0      		breq .+2
+ 424 00d8 00C0      		rjmp .L21
+ 425               	.LBB41:
+ 426               	.LBB42:
+ 229:main.c        **** 	uint32_t baddr = pagestart;
+ 428               	.LM53:
+ 429 00da 6301      		movw r12,r6
+ 430 00dc E12C      		mov r14,__zero_reg__
+ 431 00de F12C      		mov r15,__zero_reg__
+ 432 00e0 CC0C      		lsl r12
+ 433 00e2 DD1C      		rol r13
+ 434 00e4 EE1C      		rol r14
+ 435 00e6 FF1C      		rol r15
+ 232:main.c        **** 
+ 437               	.LM54:
+ 438 00e8 2091 0000 		lds r18,gBuffer
+ 230:main.c        **** 	uint16_t data;
+ 440               	.LM55:
+ 441 00ec B701      		movw r22,r14
+ 442 00ee A601      		movw r20,r12
+ 232:main.c        **** 
+ 444               	.LM56:
+ 445 00f0 A0E0      		ldi r26,lo8(gBuffer)
+ 446 00f2 B0E0      		ldi r27,hi8(gBuffer)
+ 447               	.L23:
+ 448 00f4 1296      		adiw r26,2
+ 449 00f6 FD01      		movw r30,r26
+ 450 00f8 3197      		sbiw r30,1
+ 237:main.c        **** 		boot_page_fill(baddr, data);	// call asm routine.
+ 452               	.LM57:
+ 453 00fa 8081      		ld r24,Z
+ 454 00fc 30E0      		ldi r19,0
+ 455 00fe 382B      		or r19,r24
+ 238:main.c        **** 
+ 457               	.LM58:
+ 458 0100 81E0      		ldi r24,lo8(1)
+ 459 0102 FA01      		movw r30,r20
+ 460               	/* #APP */
+ 461               	 ;  238 "main.c" 1
+ 462 0104 0901      		movw  r0, r18
+ 463 0106 8093 5700 		sts 87, r24
+ 464 010a E895      		spm
+ 465 010c 1124      		clr  r1
+ 466               		
+ 467               	 ;  0 "" 2
+ 240:main.c        **** 		size -= 2;			// Reduce number of bytes to write by two
+ 469               	.LM59:
+ 470               	/* #NOAPP */
+ 471 010e 4E5F      		subi r20,-2
+ 472 0110 5F4F      		sbci r21,-1
+ 473 0112 6F4F      		sbci r22,-1
+ 474 0114 7F4F      		sbci r23,-1
+ 475 0116 8A2D      		mov r24,r10
+ 476 0118 8A1B      		sub r24,r26
+ 477 011a 840D      		add r24,r4
+ 243:main.c        **** 
+ 479               	.LM60:
+ 480 011c 01F0      		breq .L22
+ 237:main.c        **** 		boot_page_fill(baddr, data);	// call asm routine.
+ 482               	.LM61:
+ 483 011e 2C91      		ld r18,X
+ 484 0120 00C0      		rjmp .L23
+ 485               	.L22:
+ 245:main.c        **** 	boot_spm_busy_wait();
+ 487               	.LM62:
+ 488 0122 85E0      		ldi r24,lo8(5)
+ 489 0124 F601      		movw r30,r12
+ 490               	/* #APP */
+ 491               	 ;  245 "main.c" 1
+ 492 0126 8093 5700 		sts 87, r24
+ 493 012a E895      		spm
+ 494               		
+ 495               	 ;  0 "" 2
+ 496               	/* #NOAPP */
+ 497               	.L24:
+ 246:main.c        **** 	boot_rww_enable();		// Re-enable the RWW section
+ 499               	.LM63:
+ 500 012c 07B6      		in __tmp_reg__,0x37
+ 501 012e 00FC      		sbrc __tmp_reg__,0
+ 502 0130 00C0      		rjmp .L24
+ 247:main.c        **** 
+ 504               	.LM64:
+ 505               	/* #APP */
+ 506               	 ;  247 "main.c" 1
+ 507 0132 0093 5700 		sts 87, r16
+ 508 0136 E895      		spm
+ 509               		
+ 510               	 ;  0 "" 2
+ 249:main.c        **** }
+ 512               	.LM65:
+ 513               	/* #NOAPP */
+ 514 0138 DB01      		movw r26,r22
+ 515 013a CA01      		movw r24,r20
+ 516 013c B695      		lsr r27
+ 517 013e A795      		ror r26
+ 518 0140 9795      		ror r25
+ 519 0142 8795      		ror r24
+ 520 0144 3C01      		movw r6,r24
+ 521               	.LBE42:
+ 522               	.LBE41:
+ 523 0146 00C0      		rjmp .L60
+ 524               	.L21:
+ 541:main.c        **** 				{
+ 542:main.c        **** 				address = writeFlashPage(address, size);
+ 543:main.c        **** 				} 
+ 544:main.c        **** 				else if (val == 'E') 
+ 526               	.LM66:
+ 527 0148 9534      		cpi r25,lo8(69)
+ 528 014a 01F0      		breq .+2
+ 529 014c 00C0      		rjmp .L60
+ 530 014e 20E0      		ldi r18,lo8(gBuffer)
+ 531 0150 E22E      		mov r14,r18
+ 532 0152 20E0      		ldi r18,hi8(gBuffer)
+ 533 0154 F22E      		mov r15,r18
+ 534 0156 6301      		movw r12,r6
+ 535 0158 342C      		mov r3,r4
+ 536 015a 3A0C      		add r3,r10
+ 537               	.L26:
+ 538               	.LBB43:
+ 539               	.LBB44:
+ 258:main.c        **** 		address++;			// Select next byte
+ 541               	.LM67:
+ 542 015c F701      		movw r30,r14
+ 543 015e 6191      		ld r22,Z+
+ 544 0160 7F01      		movw r14,r30
+ 545 0162 C601      		movw r24,r12
+ 546 0164 00D0      		rcall eeprom_write_byte
+ 259:main.c        **** 		size--;				// Decreas number of bytes to write
+ 548               	.LM68:
+ 549 0166 FFEF      		ldi r31,-1
+ 550 0168 CF1A      		sub r12,r31
+ 551 016a DF0A      		sbc r13,r31
+ 262:main.c        **** 
+ 553               	.LM69:
+ 554 016c 3E10      		cpse r3,r14
+ 555 016e 00C0      		rjmp .L26
+ 556 0170 8FEF      		ldi r24,-1
+ 557 0172 681A      		sub r6,r24
+ 558 0174 780A      		sbc r7,r24
+ 559 0176 8FEF      		ldi r24,lo8(-1)
+ 560 0178 840D      		add r24,r4
+ 561 017a 680E      		add r6,r24
+ 562 017c 711C      		adc r7,__zero_reg__
+ 563 017e 00C0      		rjmp .L60
+ 564               	.L17:
+ 565               	.LBE44:
+ 566               	.LBE43:
+ 567               	.LBE38:
+ 545:main.c        **** 				{
+ 546:main.c        **** 				address = writeEEpromPage(address, size);
+ 547:main.c        **** 				}
+ 548:main.c        **** 				sendchar('\r');
+ 549:main.c        **** 			} 
+ 550:main.c        **** 			else 
+ 551:main.c        **** 			{
+ 552:main.c        **** 			sendchar(0);
+ 553:main.c        **** 			}
+ 554:main.c        **** 
+ 555:main.c        **** 		// Block read
+ 556:main.c        **** 		} 
+ 557:main.c        **** 		else if (val == 'g') 
+ 569               	.LM70:
+ 570 0180 8736      		cpi r24,lo8(103)
+ 571 0182 01F0      		breq .+2
+ 572 0184 00C0      		rjmp .L27
+ 573               	.LBB45:
+ 558:main.c        **** 		{
+ 559:main.c        **** 			pagebuf_t size;
+ 560:main.c        **** 			size = recvchar() << 8;				// Load high byte of buffersize
+ 575               	.LM71:
+ 576 0186 00D0      		rcall recvchar
+ 561:main.c        **** 			size |= recvchar();				// Load low byte of buffersize
+ 578               	.LM72:
+ 579 0188 00D0      		rcall recvchar
+ 580 018a F82E      		mov r15,r24
+ 562:main.c        **** 			val = recvchar();				// Get memtype
+ 582               	.LM73:
+ 583 018c 00D0      		rcall recvchar
+ 563:main.c        **** 
+ 564:main.c        **** 			if (val == 'F') 
+ 585               	.LM74:
+ 586 018e 8634      		cpi r24,lo8(70)
+ 587 0190 01F4      		brne .L28
+ 588               	.LBB46:
+ 589               	.LBB47:
+ 271:main.c        **** 	uint16_t data;
+ 591               	.LM75:
+ 592 0192 A301      		movw r20,r6
+ 593 0194 60E0      		ldi r22,0
+ 594 0196 70E0      		ldi r23,0
+ 595 0198 2A01      		movw r4,r20
+ 596 019a 3B01      		movw r6,r22
+ 597 019c 440C      		lsl r4
+ 598 019e 551C      		rol r5
+ 599 01a0 661C      		rol r6
+ 600 01a2 771C      		rol r7
+ 601 01a4 DF2C      		mov r13,r15
+ 602 01a6 D40C      		add r13,r4
+ 603               	.L29:
+ 604               	.LBB48:
+ 283:main.c        **** 	#endif
+ 606               	.LM76:
+ 607 01a8 F201      		movw r30,r4
+ 608               	/* #APP */
+ 609               	 ;  283 "main.c" 1
+ 610 01aa E590      		lpm r14, Z+
+ 611 01ac F490      		lpm r15, Z
+ 612               		
+ 613               	 ;  0 "" 2
+ 614               	/* #NOAPP */
+ 615               	.LBE48:
+ 301:main.c        **** 		sendchar((data >> 8));		// send MSB
+ 617               	.LM77:
+ 618 01ae 8E2D      		mov r24,r14
+ 619 01b0 00D0      		rcall sendchar
+ 302:main.c        **** 		baddr += 2;			// Select next word in memory
+ 621               	.LM78:
+ 622 01b2 8F2D      		mov r24,r15
+ 623 01b4 00D0      		rcall sendchar
+ 303:main.c        **** 		size -= 2;			// Subtract two bytes from number of bytes to read
+ 625               	.LM79:
+ 626 01b6 E2E0      		ldi r30,2
+ 627 01b8 4E0E      		add r4,r30
+ 628 01ba 511C      		adc r5,__zero_reg__
+ 629 01bc 611C      		adc r6,__zero_reg__
+ 630 01be 711C      		adc r7,__zero_reg__
+ 306:main.c        **** 	return baddr>>1;
+ 632               	.LM80:
+ 633 01c0 D410      		cpse r13,r4
+ 634 01c2 00C0      		rjmp .L29
+ 307:main.c        **** }
+ 636               	.LM81:
+ 637 01c4 B301      		movw r22,r6
+ 638 01c6 A201      		movw r20,r4
+ 639 01c8 7695      		lsr r23
+ 640 01ca 6795      		ror r22
+ 641 01cc 5795      		ror r21
+ 642 01ce 4795      		ror r20
+ 643 01d0 3A01      		movw r6,r20
+ 644               	.LBE47:
+ 645               	.LBE46:
+ 646 01d2 00C0      		rjmp .L12
+ 647               	.L28:
+ 565:main.c        **** 			{
+ 566:main.c        **** 			address = readFlashPage(address, size);
+ 567:main.c        **** 			} 
+ 568:main.c        **** 			else if (val == 'E') 
+ 649               	.LM82:
+ 650 01d4 8534      		cpi r24,lo8(69)
+ 651 01d6 01F0      		breq .+2
+ 652 01d8 00C0      		rjmp .L12
+ 653 01da 6301      		movw r12,r6
+ 654 01dc E62C      		mov r14,r6
+ 655 01de EF0C      		add r14,r15
+ 656               	.L30:
+ 657               	.LBB49:
+ 658               	.LBB50:
+ 314:main.c        **** 	address++;
+ 660               	.LM83:
+ 661 01e0 C601      		movw r24,r12
+ 662 01e2 00D0      		rcall eeprom_read_byte
+ 663 01e4 00D0      		rcall sendchar
+ 315:main.c        **** 	size--;				// Decrease number of bytes to read
+ 665               	.LM84:
+ 666 01e6 FFEF      		ldi r31,-1
+ 667 01e8 CF1A      		sub r12,r31
+ 668 01ea DF0A      		sbc r13,r31
+ 318:main.c        **** 
+ 670               	.LM85:
+ 671 01ec EC10      		cpse r14,r12
+ 672 01ee 00C0      		rjmp .L30
+ 673 01f0 8FEF      		ldi r24,-1
+ 674 01f2 681A      		sub r6,r24
+ 675 01f4 780A      		sbc r7,r24
+ 676 01f6 FA94      		dec r15
+ 677 01f8 6F0C      		add r6,r15
+ 678 01fa 711C      		adc r7,__zero_reg__
+ 679 01fc 00C0      		rjmp .L12
+ 680               	.L27:
+ 681               	.LBE50:
+ 682               	.LBE49:
+ 683               	.LBE45:
+ 569:main.c        **** 			{
+ 570:main.c        **** 			address = readEEpromPage(address, size);
+ 571:main.c        **** 			}
+ 572:main.c        **** 
+ 573:main.c        **** 		// Chip erase
+ 574:main.c        ****  		} 
+ 575:main.c        **** 		else if (val == 'e') 
+ 685               	.LM86:
+ 686 01fe 8536      		cpi r24,lo8(101)
+ 687 0200 01F4      		brne .L31
+ 576:main.c        **** 		{
+ 577:main.c        **** 		if (device == DEVTYPE) 
+ 689               	.LM87:
+ 690 0202 1737      		cpi r17,lo8(119)
+ 691 0204 01F0      		breq .+2
+ 692 0206 00C0      		rjmp .L60
+ 693 0208 E0E0      		ldi r30,0
+ 694 020a F0E0      		ldi r31,0
+ 695               	.L34:
+ 696               	.LBB51:
+ 697               	.LBB37:
+ 209:main.c        **** 		boot_spm_busy_wait();		// Wait until the memory is erased.
+ 699               	.LM88:
+ 700               	/* #APP */
+ 701               	 ;  209 "main.c" 1
+ 702 020c 2092 5700 		sts 87, r2
+ 703 0210 E895      		spm
+ 704               		
+ 705               	 ;  0 "" 2
+ 706               	/* #NOAPP */
+ 707               	.L33:
+ 210:main.c        **** 		addr += SPM_PAGESIZE;
+ 709               	.LM89:
+ 710 0212 07B6      		in __tmp_reg__,0x37
+ 711 0214 00FC      		sbrc __tmp_reg__,0
+ 712 0216 00C0      		rjmp .L33
+ 713 0218 E05C      		subi r30,-64
+ 714 021a FF4F      		sbci r31,-1
+ 207:main.c        **** 		{
+ 716               	.LM90:
+ 717 021c E115      		cp r30,__zero_reg__
+ 718 021e 8CE1      		ldi r24,28
+ 719 0220 F807      		cpc r31,r24
+ 720 0222 01F4      		brne .L34
+ 213:main.c        **** }
+ 722               	.LM91:
+ 723               	/* #APP */
+ 724               	 ;  213 "main.c" 1
+ 725 0224 0093 5700 		sts 87, r16
+ 726 0228 E895      		spm
+ 727               		
+ 728               	 ;  0 "" 2
+ 729               	/* #NOAPP */
+ 730 022a 00C0      		rjmp .L60
+ 731               	.L31:
+ 732               	.LBE37:
+ 733               	.LBE51:
+ 578:main.c        **** 			{
+ 579:main.c        **** 			eraseFlash();
+ 580:main.c        **** 			}
+ 581:main.c        **** 		sendchar('\r');
+ 582:main.c        **** 
+ 583:main.c        **** 		// Exit upgrade
+ 584:main.c        **** 		} 
+ 585:main.c        **** 		else if (val == 'E') 
+ 735               	.LM92:
+ 736 022c 8534      		cpi r24,lo8(69)
+ 737 022e 01F4      		brne .L35
+ 738               	.LBB52:
+ 739               	.LBB34:
+ 741               	.Ltext5:
+ 453:e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\wdt.h **** 				"in __tmp_reg__,__SREG__" "\n\t"
+ 743               	.LM93:
+ 744               	/* #APP */
+ 745               	 ;  453 "e:\program files (x86)\atmel\studio\7.0\toolchain\avr8\avr8-gnu-toolchain\avr\include\avr\
+ 746 0230 0FB6      		in __tmp_reg__,__SREG__
+ 747 0232 F894      		cli
+ 748 0234 A895      		wdr
+ 749 0236 91BC      		out 33, r9
+ 750 0238 0FBE      		out __SREG__,__tmp_reg__
+ 751 023a 81BC      		out 33, r8
+ 752               	 	
+ 753               	 ;  0 "" 2
+ 754               	/* #NOAPP */
+ 755 023c 00C0      		rjmp .L60
+ 756               	.L35:
+ 757               	.LBE34:
+ 758               	.LBE52:
+ 760               	.Ltext6:
+ 586:main.c        **** 		{
+ 587:main.c        **** 		wdt_enable(EXIT_WDT_TIME); // Enable Watchdog Timer to give reset
+ 588:main.c        **** 		sendchar('\r');
+ 589:main.c        **** 
+ 590:main.c        **** 		#ifdef WRITELOCKBITS
+ 591:main.c        **** 			#warning "Extension 'WriteLockBits' enabled"
+ 592:main.c        **** 			// TODO: does not work reliably
+ 593:main.c        **** 			// write lockbits
+ 594:main.c        **** 			} 
+ 595:main.c        **** 			else if (val == 'l') 
+ 596:main.c        **** 			{
+ 597:main.c        **** 			if (device == DEVTYPE) 
+ 598:main.c        **** 				{
+ 599:main.c        **** 				// write_lock_bits(recvchar());
+ 600:main.c        **** 				boot_lock_bits_set(recvchar());	// boot.h takes care of mask
+ 601:main.c        **** 				boot_spm_busy_wait();
+ 602:main.c        **** 				}
+ 603:main.c        **** 			sendchar('\r');
+ 604:main.c        **** 		#endif
+ 605:main.c        **** 		// Enter programming mode
+ 606:main.c        **** 		} 
+ 607:main.c        **** 		else if (val == 'P') 
+ 762               	.LM94:
+ 763 023e 8035      		cpi r24,lo8(80)
+ 764 0240 01F0      		breq .L60
+ 608:main.c        **** 		{
+ 609:main.c        **** 		sendchar('\r');
+ 610:main.c        **** 
+ 611:main.c        **** 		// Leave programming mode
+ 612:main.c        **** 		} 
+ 613:main.c        **** 		else if (val == 'L') 
+ 766               	.LM95:
+ 767 0242 8C34      		cpi r24,lo8(76)
+ 768 0244 01F0      		breq .L60
+ 614:main.c        **** 		{
+ 615:main.c        **** 		sendchar('\r');
+ 616:main.c        **** 		// return programmer type
+ 617:main.c        **** 		} 
+ 618:main.c        **** 		else if (val == 'p') 
+ 770               	.LM96:
+ 771 0246 8037      		cpi r24,lo8(112)
+ 772 0248 01F4      		brne .L38
+ 619:main.c        **** 		{
+ 620:main.c        **** 		sendchar('S');		// always serial programmer
+ 774               	.LM97:
+ 775 024a 83E5      		ldi r24,lo8(83)
+ 776 024c 00C0      		rjmp .L59
+ 777               	.L38:
+ 621:main.c        **** 
+ 622:main.c        **** 		#ifdef ENABLEREADFUSELOCK
+ 623:main.c        **** 			#warning "Extension 'ReadFuseLock' enabled"
+ 624:main.c        **** 			// read "low" fuse bits
+ 625:main.c        **** 			} 
+ 626:main.c        **** 			else if (val == 'F') 
+ 627:main.c        **** 			{
+ 628:main.c        **** 			sendchar(read_fuse_lock(GET_LOW_FUSE_BITS));
+ 629:main.c        **** 
+ 630:main.c        **** 			// read lock bits
+ 631:main.c        **** 			} 
+ 632:main.c        **** 			else if (val == 'r') 
+ 633:main.c        **** 			{
+ 634:main.c        **** 			sendchar(read_fuse_lock(GET_LOCK_BITS));
+ 635:main.c        **** 
+ 636:main.c        **** 			// read high fuse bits
+ 637:main.c        **** 			} 
+ 638:main.c        **** 			else if (val == 'N') 
+ 639:main.c        **** 			{
+ 640:main.c        **** 			sendchar(read_fuse_lock(GET_HIGH_FUSE_BITS));
+ 641:main.c        **** 			// read extended fuse bits
+ 642:main.c        **** 			} 
+ 643:main.c        **** 			else if (val == 'Q') 
+ 644:main.c        **** 			{
+ 645:main.c        **** 			sendchar(read_fuse_lock(GET_EXTENDED_FUSE_BITS));
+ 646:main.c        **** 			#endif
+ 647:main.c        **** 
+ 648:main.c        **** 		// Return device type
+ 649:main.c        **** 		} 
+ 650:main.c        **** 		else if (val == 't') 
+ 779               	.LM98:
+ 780 024e 8437      		cpi r24,lo8(116)
+ 781 0250 01F4      		brne .L39
+ 651:main.c        **** 		{
+ 652:main.c        **** 		sendchar(DEVTYPE);
+ 783               	.LM99:
+ 784 0252 87E7      		ldi r24,lo8(119)
+ 785 0254 00D0      		rcall sendchar
+ 786               	.L61:
+ 653:main.c        **** 		sendchar(0);
+ 788               	.LM100:
+ 789 0256 80E0      		ldi r24,0
+ 790 0258 00C0      		rjmp .L59
+ 791               	.L39:
+ 654:main.c        **** 		// clear and set LED ignored
+ 655:main.c        **** 		} 
+ 656:main.c        **** 		else if ((val == 'x') || (val == 'y')) 
+ 793               	.LM101:
+ 794 025a 98E8      		ldi r25,lo8(-120)
+ 795 025c 980F      		add r25,r24
+ 796 025e 9230      		cpi r25,lo8(2)
+ 797 0260 00F4      		brsh .L40
+ 657:main.c        **** 		{
+ 658:main.c        **** 		recvchar();
+ 799               	.LM102:
+ 800 0262 00D0      		rcall recvchar
+ 801 0264 00C0      		rjmp .L60
+ 802               	.L40:
+ 659:main.c        **** 		sendchar('\r');
+ 660:main.c        **** 
+ 661:main.c        **** 		// set device
+ 662:main.c        **** 		} 
+ 663:main.c        **** 		else if (val == 'T') 
+ 804               	.LM103:
+ 805 0266 8435      		cpi r24,lo8(84)
+ 806 0268 01F4      		brne .L41
+ 664:main.c        **** 		{
+ 665:main.c        **** 		device = recvchar();
+ 808               	.LM104:
+ 809 026a 00D0      		rcall recvchar
+ 810 026c 182F      		mov r17,r24
+ 811               	.L60:
+ 666:main.c        **** 		sendchar('\r');
+ 813               	.LM105:
+ 814 026e 8DE0      		ldi r24,lo8(13)
+ 815 0270 00C0      		rjmp .L59
+ 816               	.L41:
+ 667:main.c        **** 		// Return software identifier
+ 668:main.c        **** 		} 
+ 669:main.c        **** 		else if (val == 'S') 
+ 818               	.LM106:
+ 819 0272 8335      		cpi r24,lo8(83)
+ 820 0274 01F4      		brne .L42
+ 821               	.LBB53:
+ 822               	.LBB54:
+ 347:main.c        **** 	sendchar('V');
+ 824               	.LM107:
+ 825 0276 81E4      		ldi r24,lo8(65)
+ 826 0278 00D0      		rcall sendchar
+ 348:main.c        **** 	sendchar('R');
+ 828               	.LM108:
+ 829 027a 86E5      		ldi r24,lo8(86)
+ 830 027c 00D0      		rcall sendchar
+ 349:main.c        **** 	sendchar('B');
+ 832               	.LM109:
+ 833 027e 82E5      		ldi r24,lo8(82)
+ 834 0280 00D0      		rcall sendchar
+ 350:main.c        **** 	sendchar('O');
+ 836               	.LM110:
+ 837 0282 82E4      		ldi r24,lo8(66)
+ 838 0284 00D0      		rcall sendchar
+ 351:main.c        **** 	sendchar('O');
+ 840               	.LM111:
+ 841 0286 8FE4      		ldi r24,lo8(79)
+ 842 0288 00D0      		rcall sendchar
+ 352:main.c        **** 	sendchar('T');
+ 844               	.LM112:
+ 845 028a 8FE4      		ldi r24,lo8(79)
+ 846 028c 00D0      		rcall sendchar
+ 353:main.c        **** }
+ 848               	.LM113:
+ 849 028e 84E5      		ldi r24,lo8(84)
+ 850 0290 00C0      		rjmp .L59
+ 851               	.L42:
+ 852               	.LBE54:
+ 853               	.LBE53:
+ 670:main.c        **** 		{
+ 671:main.c        **** 		send_boot();
+ 672:main.c        **** 
+ 673:main.c        **** 		// Return Software Version
+ 674:main.c        **** 		} 
+ 675:main.c        **** 		else if (val == 'V') {
+ 855               	.LM114:
+ 856 0292 8635      		cpi r24,lo8(86)
+ 857 0294 01F4      		brne .L43
+ 676:main.c        **** 		sendchar(VERSION_HIGH);
+ 859               	.LM115:
+ 860 0296 80E3      		ldi r24,lo8(48)
+ 861 0298 00D0      		rcall sendchar
+ 677:main.c        **** 		sendchar(VERSION_LOW);
+ 863               	.LM116:
+ 864 029a 88E3      		ldi r24,lo8(56)
+ 865 029c 00C0      		rjmp .L59
+ 866               	.L43:
+ 678:main.c        **** 
+ 679:main.c        **** 		// Return Signature Bytes (it seems that 
+ 680:main.c        **** 		// AVRProg expects the "Atmel-byte" 0x1E last
+ 681:main.c        **** 		// but shows it first in the dialog-window)
+ 682:main.c        **** 		} 
+ 683:main.c        **** 		else if (val == 's') 
+ 868               	.LM117:
+ 869 029e 8337      		cpi r24,lo8(115)
+ 870 02a0 01F4      		brne .L44
+ 684:main.c        **** 		{
+ 685:main.c        **** 		sendchar(SIG_BYTE3);
+ 872               	.LM118:
+ 873 02a2 87E0      		ldi r24,lo8(7)
+ 874 02a4 00D0      		rcall sendchar
+ 686:main.c        **** 		sendchar(SIG_BYTE2);
+ 876               	.LM119:
+ 877 02a6 83E9      		ldi r24,lo8(-109)
+ 878 02a8 00D0      		rcall sendchar
+ 687:main.c        **** 		sendchar(SIG_BYTE1);
+ 880               	.LM120:
+ 881 02aa 8EE1      		ldi r24,lo8(30)
+ 882 02ac 00C0      		rjmp .L59
+ 883               	.L44:
+ 688:main.c        **** 
+ 689:main.c        **** 		/* ESC */
+ 690:main.c        **** 		} 
+ 691:main.c        **** 		else if(val != 0x1b) 
+ 885               	.LM121:
+ 886 02ae 8B31      		cpi r24,lo8(27)
+ 887 02b0 01F4      		brne .+2
+ 888 02b2 00C0      		rjmp .L12
+ 692:main.c        **** 		{
+ 693:main.c        **** 		sendchar('?');
+ 890               	.LM122:
+ 891 02b4 8FE3      		ldi r24,lo8(63)
+ 892               	.L59:
+ 893 02b6 00D0      		rcall sendchar
+ 894 02b8 00C0      		rjmp .L12
+ 908               	.Lscope4:
+ 909               		.comm	gBuffer,64,1
+ 911               		.text
+ 913               	.Letext0:
+ 914               		.ident	"GCC: (AVR_8_bit_GNU_Toolchain_3.5.1_1671) 4.9.2"
+ 915               	.global __do_clear_bss
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+  E:\Temp\ccSMf23s.s:2      *ABS*:0000003e __SP_H__
+  E:\Temp\ccSMf23s.s:3      *ABS*:0000003d __SP_L__
+  E:\Temp\ccSMf23s.s:4      *ABS*:0000003f __SREG__
+  E:\Temp\ccSMf23s.s:5      *ABS*:00000000 __tmp_reg__
+  E:\Temp\ccSMf23s.s:6      *ABS*:00000001 __zero_reg__
+  E:\Temp\ccSMf23s.s:116    .text:00000000 sendchar
+  E:\Temp\ccSMf23s.s:137    .text:00000008 recvchar
+  E:\Temp\ccSMf23s.s:161    .text:00000010 __vector_default
+  E:\Temp\ccSMf23s.s:176    .text.startup:00000000 main
+                            *COM*:00000040 gBuffer
+
+UNDEFINED SYMBOLS
+eeprom_write_byte
+eeprom_read_byte
+__do_clear_bss
