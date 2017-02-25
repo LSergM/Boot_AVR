@@ -450,8 +450,18 @@ int main(void)
 	}
 
 #elif defined(START_SIMPLE)
-
-	if ((BLPIN & (1<<BLPNUM)) && (BL_2_PIN & (1<<BL_2_PNUM))) 
+	uint16_t cnt = 0;
+	uint16_t cnt_key = 0;
+	
+	for(cnt = 0; cnt < WAIT_VALUE; cnt++)
+	{
+		if ((BLPIN & (1<<BLPNUM)) && (BL_2_PIN & (1<<BL_2_PNUM))) 
+		{
+			cnt_key++;
+		}
+		_delay_ms(1);
+	}
+	if (cnt_key > (WAIT_VALUE - (WAIT_VALUE/5))) 
 	{
 		// jump to main app if pin is not grounded
 		BLPORT &= ~(1<<BLPNUM);		// set to default	
