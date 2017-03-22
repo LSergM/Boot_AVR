@@ -130,7 +130,8 @@
 
 /* Выдержка для START_WAIT mode ( t = WAIT_TIME * 10ms ) */
 #define WAIT_VALUE 400 /* сейчас: 300*10ms = 3000ms = 3sec */
-
+#define TIME_OUT_VALUE 8
+#define CLR_CNT_TIME_OUT time_out = 0
 /*
  * enable/disable readout of fuse and lock-bits
  * (AVRPROG has to detect the AVR correctly by device-code
@@ -185,6 +186,9 @@
 #include "chipdef.h"
 
 uint8_t gBuffer[SPM_PAGESIZE];
+uint8_t time_out;
+
+static inline void TimeOut(void);
 
 #if defined(BOOTLOADERHASNOVECTORS)
 	#warning "This Bootloader does not link interrupt vectors - see makefile"
@@ -195,13 +199,21 @@ uint8_t gBuffer[SPM_PAGESIZE];
 
 static void sendchar(uint8_t data)
 {
-	while (!(UART_STATUS & (1<<UART_TXREADY)));
+	CLR_CNT_TIME_OUT;
+	while (!(UART_STATUS & (1<<UART_TXREADY)))
+	{
+		TimeOut();
+	}
 	UART_DATA = data;
 }
 
 static uint8_t recvchar(void)
 {
-	while (!(UART_STATUS & (1<<UART_RXREADY)));
+	CLR_CNT_TIME_OUT;
+	while (!(UART_STATUS & (1<<UART_RXREADY)))
+	{
+		TimeOut();
+	}
 	return UART_DATA;
 }
 
@@ -254,22 +266,7 @@ static inline uint16_t writeFlashPage(uint16_t waddr, pagebuf_t size)
 	return baddr>>1;
 }
 
-static inline uint16_t writeEEpromPage(uint16_t address, pagebuf_t size)
-{
-	uint8_t *tmp = gBuffer;
 
-	do 
-		{
-		eeprom_write_byte( (uint8_t*)address, *tmp++ );
-		address++;			// Select next byte
-		size--;				// Decreas number of bytes to write
-		}
-	while (size);				// Loop until all bytes written
-
-	// eeprom_busy_wait();
-
-	return address;
-}
 
 static inline uint16_t readFlashPage(uint16_t waddr, pagebuf_t size)
 {
@@ -310,19 +307,6 @@ static inline uint16_t readFlashPage(uint16_t waddr, pagebuf_t size)
 	} 
 	while (size);				// Repeat until block has been read
 	return baddr>>1;
-}
-
-static inline uint16_t readEEpromPage(uint16_t address, pagebuf_t size)
-{
-	do 
-	{
-	sendchar( eeprom_read_byte( (uint8_t*)address ) );
-	address++;
-	size--;				// Decrease number of bytes to read
-	} 
-	while (size);				// Repeat until block has been read
-
-	return address;
 }
 
 #if defined(ENABLEREADFUSELOCK)
@@ -459,8 +443,9 @@ int main(void)
 
 #elif defined(START_SIMPLE)
 	uint16_t cnt = 0;
-	uint16_t cnt_key = 0;
+	uint16_t cnt_key;
 	
+	cnt_key = 0;
 	for(cnt = 0; cnt < WAIT_VALUE; cnt++)
 	{
 		if ((BLPIN & (1<<BLPNUM)) && (BL_2_PIN & (1<<BL_2_PNUM))) 
@@ -472,8 +457,6 @@ int main(void)
 	if (cnt_key > (WAIT_VALUE - (WAIT_VALUE/2))) 
 	{
 		// jump to main app if pin is not grounded
-		BLPORT	  &= ~(1<<BLPNUM);			// set to default	
-		BL_2_PORT &= ~(1<<BL_2_PNUM);		// set to default
 			
 	#ifdef UART_DOUBLESPEED
 		UART_STATUS &= ~( 1<<UART_DOUBLE );
@@ -561,7 +544,7 @@ int main(void)
 				} 
 				else if (val == 'E') 
 				{
-				address = writeEEpromPage(address, size);
+				//address = writeEEpromPage(address, size);
 				}
 				sendchar('\r');
 			} 
@@ -585,7 +568,7 @@ int main(void)
 			} 
 			else if (val == 'E') 
 			{
-			address = readEEpromPage(address, size);
+			//address = readEEpromPage(address, size);
 			}
 
 		// Chip erase
@@ -712,4 +695,19 @@ int main(void)
 		}
 	} 
 	return 0;
+}
+
+static inline void TimeOut(void)
+{
+	TCCR1B = (1<<CS12 | 1<<CS10); // start with div 1024
+	if(TIFR & (1 << TOV1))
+	{
+		TIFR = 0;
+		if (time_out++ > TIME_OUT_VALUE)
+		{
+			TCCR1B = 0;
+			TIMSK  = 0;
+			jump_to_app();		// Jump to application sector
+		}
+	}
 }
