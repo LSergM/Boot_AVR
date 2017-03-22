@@ -74,6 +74,11 @@
 #define BL_2_PIN		PINB
 #define BL_2_PNUM		PINB7
 
+#define RELE_PORT		PORTB
+#define RELE_DDR		DDRB
+#define RELE_PIN		PINB
+#define RELE_PNUM		PINB1
+
 
 /*
  * Выбор порта для индикатора работы загрузчика
@@ -383,6 +388,9 @@ int main(void)
 	uint8_t OK = 1;
 #endif
 
+	RELE_DDR  |=  (1<<RELE_PNUM);		// set as Output
+	RELE_PORT &= ~(1<<RELE_PNUM);		// Rele turn off
+
 	BLDDR  &= ~(1<<BLPNUM);		// set as Input
 	BLPORT |= (1<<BLPNUM);		// Enable pullup
 	
@@ -461,10 +469,10 @@ int main(void)
 		}
 		_delay_ms(1);
 	}
-	if (cnt_key > (WAIT_VALUE - (WAIT_VALUE/5))) 
+	if (cnt_key > (WAIT_VALUE - (WAIT_VALUE/2))) 
 	{
 		// jump to main app if pin is not grounded
-		BLPORT &= ~(1<<BLPNUM);		// set to default	
+		BLPORT	  &= ~(1<<BLPNUM);			// set to default	
 		BL_2_PORT &= ~(1<<BL_2_PNUM);		// set to default
 			
 	#ifdef UART_DOUBLESPEED

@@ -132,7 +132,7 @@ END GROUP
 /DISCARD/
  *(.vectors)
 
-.text           0x00001c00      0x31c
+.text           0x00001c00      0x33a
                 0x00001c00                __ctors_start = .
  *(.ctors)
                 0x00001c00                __ctors_end = .
@@ -187,46 +187,46 @@ END GROUP
  .text          0x00001c34        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4\libatmega8a.a(eewr_byte.o)
                 0x00001c34                . = ALIGN (0x2)
  *(.text.*)
- .text.startup  0x00001c34      0x2ba main.o
+ .text.startup  0x00001c34      0x2d8 main.o
                 0x00001c34                main
  .text.libgcc.mul
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
  .text.libgcc.div
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
- .text.libgcc   0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+ .text.libgcc   0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
  .text.libgcc.prologue
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
  .text.libgcc.builtins
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
  .text.libgcc.fmul
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
  .text.libgcc.fixed
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
  .text.libgcc.mul
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
  .text.libgcc.div
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
- .text.libgcc   0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+ .text.libgcc   0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
  .text.libgcc.prologue
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
  .text.libgcc.builtins
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
  .text.libgcc.fmul
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
  .text.libgcc.fixed
-                0x00001eee        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
+                0x00001f0c        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_clear_bss.o)
  .text.avr-libc
-                0x00001eee       0x10 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4\libatmega8a.a(eerd_byte.o)
-                0x00001eee                eeprom_read_byte
+                0x00001f0c       0x10 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4\libatmega8a.a(eerd_byte.o)
+                0x00001f0c                eeprom_read_byte
  .text.avr-libc
-                0x00001efe       0x1a e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4\libatmega8a.a(eewr_byte.o)
-                0x00001efe                eeprom_write_byte
-                0x00001f00                eeprom_write_r18
-                0x00001f18                . = ALIGN (0x2)
+                0x00001f1c       0x1a e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4\libatmega8a.a(eewr_byte.o)
+                0x00001f1c                eeprom_write_byte
+                0x00001f1e                eeprom_write_r18
+                0x00001f36                . = ALIGN (0x2)
  *(.fini9)
- .fini9         0x00001f18        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
-                0x00001f18                _exit
-                0x00001f18                exit
+ .fini9         0x00001f36        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f36                _exit
+                0x00001f36                exit
  *(.fini8)
  *(.fini7)
  *(.fini6)
@@ -236,13 +236,13 @@ END GROUP
  *(.fini2)
  *(.fini1)
  *(.fini0)
- .fini0         0x00001f18        0x4 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
-                0x00001f1c                _etext = .
+ .fini0         0x00001f36        0x4 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/avr4\libgcc.a(_exit.o)
+                0x00001f3a                _etext = .
 
-.trampolines    0x00001f1c        0x0
- .trampolines   0x00001f1c        0x0 linker stubs
+.trampolines    0x00001f3a        0x0
+ .trampolines   0x00001f3a        0x0 linker stubs
 
-.data           0x00800060        0x0 load address 0x00001f1c
+.data           0x00800060        0x0 load address 0x00001f3a
                 0x00800060                PROVIDE (__data_start, .)
  *(.data)
  .data          0x00800060        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4/crtatmega8a.o
@@ -256,7 +256,7 @@ END GROUP
                 0x00800060                _edata = .
                 0x00800060                PROVIDE (__data_end, .)
 
-.bss            0x00800060       0x40 load address 0x00001f1c
+.bss            0x00800060       0x40 load address 0x00001f3a
                 0x00800060                PROVIDE (__bss_start, .)
  *(.bss)
  .bss           0x00800060        0x0 e:/program files (x86)/atmel/studio/7.0/toolchain/avr8/avr8-gnu-toolchain/bin/../lib/gcc/avr/4.9.2/../../../../avr/lib/avr4/crtatmega8a.o
@@ -269,8 +269,8 @@ END GROUP
  COMMON         0x00800060       0x40 main.o
                 0x00800060                gBuffer
                 0x008000a0                PROVIDE (__bss_end, .)
-                0x00001f1c                __data_load_start = LOADADDR (.data)
-                0x00001f1c                __data_load_end = (__data_load_start + SIZEOF (.data))
+                0x00001f3a                __data_load_start = LOADADDR (.data)
+                0x00001f3a                __data_load_end = (__data_load_start + SIZEOF (.data))
 
 .noinit         0x008000a0        0x0
                 0x008000a0                PROVIDE (__noinit_start, .)
@@ -283,13 +283,13 @@ END GROUP
  *(.eeprom*)
                 0x00810000                __eeprom_end = .
 
-.stab           0x00000000      0xbdc
+.stab           0x00000000      0xc54
  *(.stab)
- .stab          0x00000000      0xbdc main.o
+ .stab          0x00000000      0xc54 main.o
 
-.stabstr        0x00000000      0xf3c
+.stabstr        0x00000000      0xfae
  *(.stabstr)
- .stabstr       0x00000000      0xf3c main.o
+ .stabstr       0x00000000      0xfae main.o
 
 .stab.excl
  *(.stab.excl)

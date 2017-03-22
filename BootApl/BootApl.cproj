@@ -78,10 +78,10 @@
       </AvrGcc>
     </ToolchainSettings>
     <UsesExternalMakeFile>True</UsesExternalMakeFile>
-    <OutputDirectory>F:\PRJ_HOME\HOME_0039_REPAIR_TERMOSTAT\Boot_prj\Boot\BootApl</OutputDirectory>
+    <OutputDirectory>F:\PRJ_HOME\HOME_0039_REPAIR_TERMOSTAT\Boot_AVR\BootApl</OutputDirectory>
     <BuildTarget>all</BuildTarget>
     <CleanTarget>clean</CleanTarget>
-    <ExternalMakeFilePath>F:\PRJ_HOME\HOME_0039_REPAIR_TERMOSTAT\Boot_prj\Boot\BootApl\makefile</ExternalMakeFilePath>
+    <ExternalMakeFilePath>F:\PRJ_HOME\HOME_0039_REPAIR_TERMOSTAT\Boot_AVR\BootApl\makefile</ExternalMakeFilePath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <ToolchainSettings>
